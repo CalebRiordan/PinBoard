@@ -119,6 +119,19 @@ def _create_mock_data():
         Page(8, "Page 3", date(2023, 1, 2), "This is the content of page 3.", 40, 550),
         Image(9, "Image 3", date(2023, 1, 2), _create_test_image_bytes(), 50, 100),
     ]
+    
+    # board_4_items = [
+    #     Note(10, "Test Note", date(2023, 1, 2), "This is another note.", 1, 5),
+    #     Note(11, "Test Note", date(2023, 1, 2), "This is another note.", 281, 5),
+    #     Note(12, "Test Note", date(2023, 1, 2), "This is another note.", 561, 5),
+    #     Note(13, "Test Note", date(2023, 1, 2), "This is another note.", 841, 5),
+    #     Note(14, "Test Note", date(2023, 1, 2), "This is another note.", 1121, 5),
+    #     Note(15, "Test Note", date(2023, 1, 2), "This is another note.", 1401, 5),
+    #     Note(16, "Test Note", date(2023, 1, 2), "This is another note.", 1681, 5),
+    #     Note(17, "Test Note", date(2023, 1, 2), "This is another note.", 1961, 5),
+    #     Note(18, "Test Note", date(2023, 1, 2), "This is another note.", 2241, 5),
+    #     Note(19, "Test Note", date(2023, 1, 2), "This is another note.", 2521, 5),
+    # ]
 
     # Create boards with associated items
     all_boards = [

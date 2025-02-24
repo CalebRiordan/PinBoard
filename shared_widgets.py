@@ -235,6 +235,11 @@ class BoardItemWidget(tk.Frame):
         self.scaled_y += dy
         self.show()
 
+    def pan(self, dx, dy):
+        self.scaled_x += dx
+        self.scaled_y += dy
+        self.place(x=self.scaled_x, y=self.scaled_y)
+        
     @abstractmethod
     def scale_font(self):
         pass
