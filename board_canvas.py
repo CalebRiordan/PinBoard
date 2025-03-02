@@ -3,7 +3,6 @@ import tkinter as tk
 from typing import List
 from colours import *
 from PIL import Image as PILImage
-import math
 from shared_widgets import *
 from utilities import resize_image, _draw_image_test
 from dataclasses import dataclass
@@ -26,7 +25,6 @@ class BoardCanvas(tk.Canvas):
         super().__init__(parent, background=ORANGE, highlightthickness=0)
 
         self.previously_opened = False
-        self.observers = []
         self.img = None
         self.photo_image = None
         self.width = 0
@@ -74,7 +72,7 @@ class BoardCanvas(tk.Canvas):
         self.move_x = 0
         self.move_y = 0
         self.last_update_time = 0
-        self.update_threshold = 0.032
+        self.update_threshold = 0.016
 
         self.set_bindings()
 
@@ -145,9 +143,8 @@ class BoardCanvas(tk.Canvas):
             self.offset_and_scale_items()
             self._redraw_canvas()
 
-    def _draw_image(self, x: int, y: int):
+    def _draw_image(self, x: int, y: int):        
         self.create_image(x, y, image=self.photo_image, tags="tile")
-        # _draw_image_test(self, x, y, self.cell_width, self.cell_height, self.zoom_scale)
 
     def _set_boundary_adjustments(self):
         x = self.zoom_point.x
@@ -181,7 +178,6 @@ class BoardCanvas(tk.Canvas):
 
     def _calculate_borders(self):
         # Calculate Local x (lx) and Local y (ly)
-        print()
         x = self.zoom_point.x
         cw = self.cell_width * self.last_scale
         dx = x - self.last_zoom_point.x + self.lx
@@ -222,9 +218,9 @@ class BoardCanvas(tk.Canvas):
 
     def _redraw_canvas(self):
         self.delete("tile")
-
         scaled_cell_width = int(self.cell_width * self.zoom_scale)
         scaled_cell_height = int(self.cell_height * self.zoom_scale)
+        
         # Left Side
         x = self.left
         while x > 0 - scaled_cell_width:
@@ -233,8 +229,8 @@ class BoardCanvas(tk.Canvas):
             while y > 0 - scaled_cell_height:
                 self._draw_image(x, y)
                 y -= scaled_cell_height
-            y = self.bottom
-            while y < self.height + scaled_cell_width:
+            y = self.bottom - 1
+            while y < self.height + scaled_cell_height:
                 self._draw_image(x, y)
                 y += scaled_cell_height
             x -= scaled_cell_width
@@ -247,7 +243,7 @@ class BoardCanvas(tk.Canvas):
             while y > 0 - scaled_cell_height:
                 self._draw_image(x, y)
                 y -= scaled_cell_height
-            y = self.bottom
+            y = self.bottom - 1
             while y < self.height + scaled_cell_height:
                 self._draw_image(x, y)
                 y += scaled_cell_height
@@ -259,6 +255,38 @@ class BoardCanvas(tk.Canvas):
             self.width = self.winfo_width()
             self.height = self.winfo_height()
             self._redraw_canvas()
+
+    def bind_items(self):
+        for item in self.board_items:
+            item.bind("<1>", lambda event, item=item: self.set_drag_binding(event, item))
+            item.bind("<ButtonRelease>", lambda event, item=item: item.unbind("<B1-Motion>"))
+
+    def unbind_items(self):
+        for item in self.board_items:
+            item.unbind("<1>")
+            item.unbind("<ButtonRelease>")
+
+    def set_drag_binding(self, event: tk.Event, item: BoardItemWidget):
+        item.prev_x = event.x_root
+        item.prev_y = event.y_root
+        left = self.winfo_rootx()
+        top = self.winfo_rooty()
+        bottom = top + self.winfo_height()
+        right = left + self.winfo_width()
+        item.lift()
+
+        def displace_item(event: tk.Event, top, left, bottom, right):
+            x = event.x_root
+            y = event.y_root
+        
+            if x > left and x < right and y > top and y < bottom:
+                dx = x - item.prev_x
+                dy = y - item.prev_y
+                item.displace(dx, dy)
+                item.prev_x = x
+                item.prev_y = y
+
+        item.bind("<B1-Motion>", lambda event: displace_item(event, top, left, bottom, right))
 
     def start_pan(self, e: tk.Event):
         self.last_x = e.x
@@ -289,7 +317,6 @@ class BoardCanvas(tk.Canvas):
                 self.zoom_point.y += self.move_y
 
                 # Move canvas objects and widgets
-                self.move("tile", self.move_x, self.move_y)
                 for item in self.board_items:
                     item.pan(self.move_x, self.move_y)
                 self.reset_pan(e)
@@ -308,13 +335,13 @@ class BoardCanvas(tk.Canvas):
         if self.board_items:
             for item in self.board_items:
                 item.show()
+            self.bind_items()
 
     def hide_items(self):
-        if not self.board_items:
-            raise ValueError("No items to hide. 'self.board_items' is empty.")
-
-        for item in self.board_items:
-            item.hide()
+        if self.board_items:
+            for item in self.board_items:
+                item.hide()
+            self.unbind_items()
 
     def open(self):
         self.grid(row=1, column=1, sticky="nsew")

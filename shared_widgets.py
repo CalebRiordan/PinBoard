@@ -206,6 +206,9 @@ class BoardItemWidget(tk.Frame):
         self.native_y = self.item.y * DEVICE_SCALE_FACTOR
         self.scaled_x = self.native_x
         self.scaled_y = self.native_y
+        
+        self.prev_x = 0
+        self.prev_y = 0
 
         super().__init__(canvas, width=width, height=height, **kwargs)
 
@@ -228,7 +231,7 @@ class BoardItemWidget(tk.Frame):
         self.place_forget()
 
     def displace(self, dx, dy):
-        self.hide()
+        # self.hide()
         self.item.x += dx / self.scale_factor
         self.item.y += dy / self.scale_factor
         self.scaled_x += dx
