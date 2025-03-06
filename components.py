@@ -46,11 +46,6 @@ class BoardHandler:
         BoardHandler._instance = self
         self._canvas_parent = canvas_parent
 
-        # Set scale factor for items
-        sc_width, sc_height = utils.get_display_size()
-        scale_factor = sc_width / 1920 * 0.7 + sc_height / 1080 * 0.3
-        utils.update_setting("DEVICE_SCALE_FACTOR", scale_factor)
-
         self.db_service = DatabaseService()
 
     def initialize_boards(self):

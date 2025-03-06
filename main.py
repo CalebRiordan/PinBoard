@@ -8,11 +8,10 @@ from widgets import (
 )
 from shared_widgets import CloseButton, ContextMenu
 from components import TabHandler, BoardHandler
-from database_service import DatabaseService
 from colours import *
 from window_manager import WindowManager
 from PIL import Image, ImageTk
-from board_canvas import BoardCanvas
+from utilities import get_display_size, update_setting
 
 
 class App(tk.Tk):
@@ -45,8 +44,7 @@ class App(tk.Tk):
         board_area = BoardArea(tabs_and_board)
         BoardHandler(board_area)
 
-        # fill canvas with repeatable texture images
-        self.after(100, self.wm.set_resize_grips)
+        self.after(10, self.wm.set_resize_grips)
 
         # Bring window up from minimized state
         self.attributes("-topmost", 1)
@@ -73,6 +71,11 @@ def configure_main_window(window: App, wm: WindowManager):
     title_bar.pack_propagate(False)
 
     wm.set_grip(title_bar)
+    
+    # Set scale factor for items
+    sc_width, sc_height = get_display_size()
+    scale_factor = sc_width / 1920 * 0.7 + sc_height / 1080 * 0.3
+    update_setting("DEVICE_SCALE_FACTOR", scale_factor)
 
     # Buttons
     close_app_button = CloseButton(

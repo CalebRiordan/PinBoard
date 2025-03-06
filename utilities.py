@@ -66,7 +66,7 @@ def _write_settings_to_file():
 def bytes_to_image(image_bytes):
     input_stream = BytesIO(image_bytes)
     pil_image = Image.open(input_stream)
-    return ImageTk.PhotoImage(pil_image)
+    return pil_image
 
 
 def _create_test_image_bytes():

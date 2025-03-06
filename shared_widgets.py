@@ -1,10 +1,11 @@
 from abc import abstractmethod
 import tkinter as tk
-from tkinter import font
 from colours import *
 from models import *
-from utilities import add_bg_colour_hover_effect, add_hover_effect, get_display_size, get_setting
+from utilities import add_bg_colour_hover_effect, add_hover_effect, get_display_size, get_setting, resize_image
 import customtkinter as ctk
+from PIL import ImageTk
+import models
 
 DEVICE_SCALE_FACTOR = get_setting("DEVICE_SCALE_FACTOR")
 
@@ -206,7 +207,7 @@ class BoardItemWidget(tk.Frame):
         self.native_y = self.item.y * DEVICE_SCALE_FACTOR
         self.scaled_x = self.native_x
         self.scaled_y = self.native_y
-        
+
         self.prev_x = 0
         self.prev_y = 0
 
@@ -216,8 +217,10 @@ class BoardItemWidget(tk.Frame):
         self.scale_factor = factor
         self.width = self.original_width * factor
         self.height = self.original_height * factor
+        # if isinstance(self, ImageWidget):
+        #     print(self.scaled_x, self.scaled_y)
 
-        self.scale_font()
+        self.scale_content()
         self.configure(width=self.width, height=self.height)
 
     def show(self, x=None, y=None):
@@ -242,9 +245,9 @@ class BoardItemWidget(tk.Frame):
         self.scaled_x += dx
         self.scaled_y += dy
         self.place(x=self.scaled_x, y=self.scaled_y)
-        
+
     @abstractmethod
-    def scale_font(self):
+    def scale_content(self):
         pass
 
 
@@ -275,8 +278,9 @@ class NoteWidget(BoardItemWidget):
         self.text_widget = tk.Text(self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", font_scale))
         self.text_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
         self.text_widget.insert("1.0", item.content)
+        self.text_widget.configure(state="disabled")
 
-    def scale_font(self):
+    def scale_content(self):
         font_scale = int(12 * self.scale_factor)
         self.title_label.config(font=("Commons", font_scale + 2, "bold"))
         self.text_widget.config(font=("Dubai Medium", font_scale))
@@ -284,10 +288,41 @@ class NoteWidget(BoardItemWidget):
 
 class ImageWidget(BoardItemWidget):
 
-    def __init__(self, canvas, item: Image):
+    def __init__(self, canvas, item: models.Image):
         width = 400 * DEVICE_SCALE_FACTOR
         height = 300 * DEVICE_SCALE_FACTOR
         super().__init__(canvas, width, height, item, bg=WHITE, highlightthickness=2, highlightbackground=BLACK)
+
+        max_size = 800 * DEVICE_SCALE_FACTOR
+        self.img = None
+
+        # Set up grid
+        if item.image.width > max_size or item.image.height > max_size:
+            self.img = resize_image(item.image, max_size)
+        else:
+            self.img = ImageTk.PhotoImage(item.image)
+
+        self.largest_dimension = max(self.img.width(), self.img.height())
+        w = int(self.img.width()) + 20 * self.scale_factor
+        h = int(self.img.height()) + 20 * self.scale_factor
+        self.configure(width=w, height=h)
+
+        self.image_canvas = tk.Canvas(self, width=w, height=h, highlightthickness=0, bg=WHITE)
+        self.image_canvas.pack(fill="both", expand=True)
+        self.image_canvas.create_image(w / 2, h / 2, image=self.img, anchor="center", tag="image")
+
+        self.original_width = w
+        self.original_height = h
+        self.width = w
+        self.height = h
+
+    def scale_content(self):
+        self.img = resize_image(self.item.image, int(self.largest_dimension * self.scale_factor))
+        self.image_canvas.delete("image")
+        w = int(self.img.width()) + 20 * self.scale_factor
+        h = int(self.img.height()) + 20 * self.scale_factor
+        self.image_canvas.configure(width=w, height=h)
+        self.image_canvas.create_image(w / 2, h / 2, image=self.img, anchor="center", tag="image")
 
 
 class PageWidget(BoardItemWidget):
@@ -295,5 +330,36 @@ class PageWidget(BoardItemWidget):
     def __init__(self, canvas, item: Page):
         width = 280 * DEVICE_SCALE_FACTOR
         height = 400 * DEVICE_SCALE_FACTOR
-        font_scale = int(12 * DEVICE_SCALE_FACTOR)
+        font_scale = int(8 * DEVICE_SCALE_FACTOR)
         super().__init__(canvas, width, height, item, bg=WHITE, highlightthickness=2, highlightbackground=BLACK)
+
+        # Set up grid
+        self.rowconfigure(index=0, weight=1, uniform="page_grid")
+        self.rowconfigure(index=1, weight=2, uniform="page_grid")
+        self.rowconfigure(index=2, weight=1, uniform="page_grid")
+        self.rowconfigure(index=3, weight=28, uniform="page_grid")
+        self.rowconfigure(index=4, weight=1, uniform="page_grid")
+        self.columnconfigure(index=0, weight=1, uniform="page_grid")
+        self.columnconfigure(index=1, weight=18, uniform="page_grid")
+        self.columnconfigure(index=2, weight=1, uniform="page_grid")
+        self.grid_propagate(False)
+
+        self.title_label = tk.Label(
+            self,
+            bg=item.colour,
+            font=("Commons", int(font_scale * 1.75), "bold"),
+            text=self.item.title,
+            anchor="w",
+            pady=0,
+        )
+        self.title_label.grid(row=1, column=1, sticky="nesw", padx=0, pady=0)
+
+        self.text_widget = tk.Text(self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", font_scale))
+        self.text_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
+        self.text_widget.insert("1.0", item.content)
+        self.text_widget.configure(state="disabled")
+
+    def scale_content(self):
+        font_scale = int(8 * self.scale_factor)
+        self.title_label.config(font=("Commons", int(font_scale * 1.75), "bold"))
+        self.text_widget.config(font=("Dubai Medium", font_scale))

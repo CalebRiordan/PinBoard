@@ -6,6 +6,7 @@ from PIL import Image as PILImage
 from shared_widgets import *
 from utilities import resize_image, _draw_image_test
 from dataclasses import dataclass
+import models
 
 """
 The board_canvas file and BoardCanvas (BC) class is responsible for and keep state of the canvas AND its board items
@@ -100,11 +101,11 @@ class BoardCanvas(tk.Canvas):
         item_widget.show()
 
     def item_model_to_widget(self, item: BoardItem):
-        if isinstance(item, Note):
+        if isinstance(item, models.Note):
             return NoteWidget(self, item)
-        elif isinstance(item, Image):
+        elif isinstance(item, models.Image):
             return ImageWidget(self, item)
-        elif isinstance(item, Page):
+        elif isinstance(item, models.Page):
             return PageWidget(self, item)
         else:
             raise ValueError(f"Cannot convert item '{item} to any sort of BoardItem widget'")
@@ -145,6 +146,7 @@ class BoardCanvas(tk.Canvas):
 
     def _draw_image(self, x: int, y: int):        
         self.create_image(x, y, image=self.photo_image, tags="tile")
+        # _draw_image_test(self, x, y, self.cell_width, self.cell_height, self.zoom_scale,)
 
     def _set_boundary_adjustments(self):
         x = self.zoom_point.x
@@ -315,12 +317,15 @@ class BoardCanvas(tk.Canvas):
                 self.last_zoom_point.y += self.move_y
                 self.zoom_point.x += self.move_x
                 self.zoom_point.y += self.move_y
+                self.top = int(self.zoom_point.y - self.ly)
+                self.left = int(self.zoom_point.x - self.lx)
+                self.bottom = int(self.top + self.cell_height * self.zoom_scale)
+                self.right = int(self.left + self.cell_width * self.zoom_scale)
 
                 # Move canvas objects and widgets
                 for item in self.board_items:
                     item.pan(self.move_x, self.move_y)
                 self.reset_pan(e)
-                self._calculate_borders()
                 self._redraw_canvas()
 
             self.last_x = e.x
@@ -355,3 +360,7 @@ class BoardCanvas(tk.Canvas):
         for item in self.board_items:
             item.destroy()
         return super().destroy()
+
+    def _show_lx_ly(self):
+        self.create_line(self.zoom_point.x, self.zoom_point.y, self.zoom_point.x - self.lx, self.zoom_point.y, tags="line", fill=BLUE)
+        self.create_line(self.zoom_point.x, self.zoom_point.y, self.zoom_point.x, self.zoom_point.y - self.ly, tags="line", fill=BLUE)
