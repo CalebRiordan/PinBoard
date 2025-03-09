@@ -22,7 +22,7 @@ class BoardCanvas(tk.Canvas):
         x: int
         y: int
 
-    def __init__(self, parent, item_models=[]):
+    def __init__(self, parent, side_pannel, item_models=[]):
         super().__init__(parent, background=ORANGE, highlightthickness=0)
 
         self.previously_opened = False
@@ -31,6 +31,7 @@ class BoardCanvas(tk.Canvas):
         self.width = 0
         self.height = 0
 
+        self.side_panel: MainSidePanelFrame = side_pannel
         self.board_items: List[BoardItemWidget] = []
         if item_models != []:
             for model in item_models:
@@ -74,6 +75,9 @@ class BoardCanvas(tk.Canvas):
         self.move_y = 0
         self.last_update_time = 0
         self.update_threshold = 0.016
+
+        # Selected tabs
+        self.selected_items: set[BoardItemWidget] = set()
 
         self.set_bindings()
 
@@ -258,10 +262,30 @@ class BoardCanvas(tk.Canvas):
             self.height = self.winfo_height()
             self._redraw_canvas()
 
-    def bind_items(self):
+    def bind_items(self):                
         for item in self.board_items:
+            
+            def item_on_click(e, item=item):
+                if not (len(self.selected_items) == 1 and next(iter(self.selected_items)) == item):
+                    for i in self.selected_items:
+                        i.remove_highlight()
+                    self.update_idletasks()
+                    item.highlight()
+                    self.selected_items.clear()
+                    self.selected_items.add(item)
+                    self.side_panel.set_context(self.side_panel.Contexts.ITEM, item)
+                    
+            def item_on_shift_click(e, item=item):
+                if item in self.selected_items:
+                    self.selected_tabs.append(item)
+                    
             item.bind("<1>", lambda event, item=item: self.set_drag_binding(event, item))
             item.bind("<ButtonRelease>", lambda event, item=item: item.unbind("<B1-Motion>"))
+            item.bind("<1>", item_on_click)
+            item.bind("<Shift-1>", item_on_shift_click)
+            children = item.winfo_children()
+            utils.set_bindings("<1>", item_on_click, item, *children)
+        
 
     def unbind_items(self):
         for item in self.board_items:
@@ -354,6 +378,7 @@ class BoardCanvas(tk.Canvas):
             self.initial_setup()
 
     def close(self):
+        self.selected_tabs = []
         self.grid_forget()
 
     def destroy(self):

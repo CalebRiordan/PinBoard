@@ -438,3 +438,11 @@ def make_label(master, width=None, height=None, *args, **kwargs):
     label = tk.Label(frame, *args, **kwargs)
     label.pack(fill="both", expand=1)
     return frame
+
+def set_bindings(sequence: str, command, *widgets):
+    for widget in widgets:
+        if not isinstance(widget, tk.Widget):
+            raise ValueError(f"*widgets argument must contain only widgets, not '{type(widget)}'") 
+        widget.bind(sequence=sequence, func=command)
+                
+        

@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from utilities import bytes_to_image, get_display_size, random_colour
 from colours import *
 
@@ -16,7 +17,7 @@ class BoardItem():
         self.item_id = item_id
         self.title = title
         self.colour = colour
-        self.tags = tags
+        self.tags: set[str] = set(tags)
         self.date_created = date_created        
         self.x = x
         self.y = y

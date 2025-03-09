@@ -1,12 +1,11 @@
 import tkinter as tk
 from widgets import (
-    MainSidePanelFrame,
     TabsAndBoard,
     BoardArea,
     RestoreButton,
     MinimizeButton,
 )
-from shared_widgets import CloseButton, ContextMenu
+from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
 from components import TabHandler, BoardHandler
 from colours import *
 from window_manager import WindowManager
@@ -33,7 +32,7 @@ class App(tk.Tk):
         working_area.pack(fill="both", expand=True)
 
         # Create side panel and board frame
-        MainSidePanelFrame(working_area, self, self.wm.width * 0.25)
+        side_panel = MainSidePanelFrame(working_area, self, self.wm.width * 0.25)
         tabs_and_board = TabsAndBoard(working_area)
 
         # get component instances
@@ -42,13 +41,15 @@ class App(tk.Tk):
         th._tab_list.after(300, th.initialize_tab_list)
 
         board_area = BoardArea(tabs_and_board)
-        BoardHandler(board_area)
+        BoardHandler(board_area, side_panel)
 
         self.after(10, self.wm.set_resize_grips)
 
         # Bring window up from minimized state
         self.attributes("-topmost", 1)
         self.attributes("-topmost", 0)
+        
+        # OpenBoardWindow(self, self.wm.width*0.5, self.wm.height*0.8)
 
     def save_and_close(self):
         # perform logic such as saving unsaved boards

@@ -5,7 +5,7 @@ from datetime import date
 import customtkinter as ctk
 from board_canvas import BoardCanvas
 from models import *
-from shared_widgets import CloseButton, ContextMenu
+from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
 from typing import List
 import tkinter as tk
 from tooltip import ToolTip
@@ -33,18 +33,19 @@ class BoardHandler:
     """
 
     @staticmethod
-    def get_instance(canvas_parent=None):
+    def get_instance(canvas_parent=None, side_panel = None):
         if BoardHandler._instance is None:
-            if not canvas_parent:
-                raise ValueError("BoardHandler cannot be initialized without a 'canvas_parent'.")
+            if not (canvas_parent and side_panel):
+                raise ValueError("BoardHandler cannot be initialized without a canvas parent and side panel.")
             return BoardHandler()
         return BoardHandler._instance
 
-    def __init__(self, canvas_parent):
+    def __init__(self, canvas_parent, side_panel):
         if BoardHandler._instance is not None:
             raise Exception("BoardHandler class is a singleton. An instance already exists")
         BoardHandler._instance = self
         self._canvas_parent = canvas_parent
+        self.side_panel: MainSidePanelFrame = side_panel
 
         self.db_service = DatabaseService()
 
@@ -84,6 +85,7 @@ class BoardHandler:
 
         if self._current_board is not None:
             self.current_canvas().close()
+            self.current_canvas().unbind("<1>")
 
         self.show_board(board_id)
 
@@ -91,6 +93,8 @@ class BoardHandler:
         if id in self._open_boards.keys():
             self._current_board = self._open_boards[id]
             self.current_canvas().open()
+            self.set_side_panel_context()
+            self.current_canvas().bind("<1>", self.set_side_panel_context)
         else:
             raise ValueError(f"Board with id '{id}' not found amongst currently open boards")
 
@@ -99,7 +103,7 @@ class BoardHandler:
         new_board = Board(new_board_id, "", date.today(), True, [])
         new_board.saved = False
         self._open_boards[new_board_id] = new_board
-        self._open_canvases[new_board_id] = BoardCanvas(self._canvas_parent)
+        self._open_canvases[new_board_id] = BoardCanvas(self._canvas_parent, self.side_panel)
         self._all_boards_ids.append(new_board_id)
         return new_board
 
@@ -111,7 +115,7 @@ class BoardHandler:
             board: Board = self.db_service.get_board(id)
             if board:
                 self._open_boards[id] = board
-                self._open_canvases[id] = BoardCanvas(self._canvas_parent, board.board_items)
+                self._open_canvases[id] = BoardCanvas(self._canvas_parent, self.side_panel, board.board_items)
             else:
                 raise ValueError(f"Board with id '{id} does not exist'")
 
@@ -155,6 +159,10 @@ class BoardHandler:
             if i not in self._all_boards_ids:
                 return i
         raise Exception("New board ID could not be generated. All IDs within range already taken")
+
+    def set_side_panel_context(self, event = None):
+        self.side_panel.set_context(self.side_panel.Contexts.BOARD, self._current_board) 
+        
 
 
 # Singleton class for TABS and BOARDS with related utility methods
@@ -723,43 +731,3 @@ class TabHandler:
     def delete_board(self, tab: "Tab"):
         self.close_tab(tab)
         # self._bh.delete_board(tab.board_id)
-
-
-# Class for simple logic for handling a board item's tags
-
-
-class TagList:
-
-    list = []
-    text_set = set()  # set
-
-    def __init__(self, tags=List[str]):
-        self.add_tags(tags)
-
-    def add(self, text):
-        if len(text) > 15:
-            # TODO: popup -> tag is too long
-            print("Tag can only have a maximum of 15 characters")
-            return False
-        if len(self.list) > 10:
-            # TODO: popup -> too many tags
-            print("too many tags")
-            return False
-        if text in self.text_set:
-            # TODO: popup -> tag already exists
-            print("tag already exists")
-            return False
-
-        # Update instance variables
-        self.list.append(text)
-        self.text_set.add(text)
-
-        return True
-
-    def remove(self, text):
-        self.list.remove(text)
-        self.text_set.remove(text)
-
-    def add_tags(self, tags):
-        for tag in tags:
-            self.add(tag)
