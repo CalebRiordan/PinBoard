@@ -1,6 +1,6 @@
 import tkinter as tk
 import ctypes
-from utilities import set_opacity, get_display_size
+from utilities import set_opacity, get_display_size, update_setting
 from colours import *
 
 
@@ -22,26 +22,40 @@ class WindowManager:
     south = 0
     west = 0
 
-    def __init__(self, window: tk.Tk):
+    def __init__(self, window: tk.Tk, title):
         self.root = window
         self.maximized = False
         self.deiconified = True
 
         # Bind the event that triggers when the window is shown to remove default title bar
         self.root.bind("<Map>", self.restore)
+        
+        # Disable DPI awareness since we are scaling manually
+        # TODO: Remove manual scaling and rely on DPI Awareness
+        ctypes.windll.shcore.SetProcessDpiAwareness(0) 
+        
+        window.title(title)
+        self.set_initial_geometry()
 
     def set_initial_geometry(self):
         sc_width, sc_height = get_display_size()
         self.width, self.height = int(sc_width * 0.75), int(sc_height * 0.75)
+        scale_factor = sc_width / 1920 * 0.7 + sc_height / 1080 * 0.3
+        update_setting("DEVICE_SCALE_FACTOR", scale_factor)
 
         self.west = (sc_width - self.width) // 2
         self.north = (sc_height - self.height) // 3
-        # Using wm_geometry() instead of geometry(). Tk still adjusts window size after geometry() is called for some reason
+        # Use wm_geometry() instead of geometry(). Tk still adjusts window size after geometry() is called for some reason
         self.root.wm_geometry(f"{self.width}x{self.height}+{self.west}+{self.north}")
+        
+        self.minsize(750, 450)
+        update_setting("APP_WIDTH_INITIAL", self.width)
+        update_setting("APP_HEIGHT_INITIAL", self.height)
 
     def minsize(self, width, height):
         self.min_width = width
         self.min_height = height
+        self.root.minsize(self.min_width, self.min_height)
 
     def set_grip(self, widget: tk.Widget):
         def move_window(e):

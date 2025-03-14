@@ -9,7 +9,8 @@ from dataclasses import dataclass
 import models
 
 """
-The board_canvas file and BoardCanvas (BC) class is responsible for and keep state of the canvas AND its board items
+The board_canvas file and BoardCanvas (BC) class is responsible for the canvas UI component AND its board items
+This includes pannning, zooming, scrolling, dragging, resizing, and maintaining the canvas boundaries or edges
 The BC can be thought of as the View component in MVC pattern, where the BoardHandler is the Controller and the Board model
 (models.py) is, of course, the model.
 """
@@ -112,7 +113,9 @@ class BoardCanvas(tk.Canvas):
         elif isinstance(item, models.Page):
             return PageWidget(self, item)
         else:
-            raise ValueError(f"Cannot convert item '{item} to any sort of BoardItem widget'")
+            raise ValueError(
+                f"Cannot convert item '{item} to any sort of BoardItem widget'"
+            )
 
     def set_texture(self):
         self.img = PILImage.open("assets/images/pinboard_background.png")
@@ -137,10 +140,19 @@ class BoardCanvas(tk.Canvas):
         elif self.zoom_scale < self.min_scale:
             self.zoom_scale = self.min_scale
         else:
-            self.last_zoom_point.x, self.last_zoom_point.y = self.zoom_point.x, self.zoom_point.y
+            self.last_zoom_point.x, self.last_zoom_point.y = (
+                self.zoom_point.x,
+                self.zoom_point.y,
+            )
             self.zoom_point.x, self.zoom_point.y = point
             self.photo_image = resize_image(
-                self.img, int(max(self.cell_width * self.zoom_scale, self.cell_height * self.zoom_scale))
+                self.img,
+                int(
+                    max(
+                        self.cell_width * self.zoom_scale,
+                        self.cell_height * self.zoom_scale,
+                    )
+                ),
             )
 
             self._set_boundary_adjustments()
@@ -148,7 +160,7 @@ class BoardCanvas(tk.Canvas):
             self.offset_and_scale_items()
             self._redraw_canvas()
 
-    def _draw_image(self, x: int, y: int):        
+    def _draw_image(self, x: int, y: int):
         self.create_image(x, y, image=self.photo_image, tags="tile")
         # _draw_image_test(self, x, y, self.cell_width, self.cell_height, self.zoom_scale,)
 
@@ -157,9 +169,15 @@ class BoardCanvas(tk.Canvas):
         y = self.zoom_point.y
         # Create anchors at all four corners
         self.top_anchor = y - (y - self.top_anchor) / self.last_scale * self.zoom_scale
-        self.right_anchor = x - (x - self.right_anchor) / self.last_scale * self.zoom_scale
-        self.bottom_anchor = y - (y - self.bottom_anchor) / self.last_scale * self.zoom_scale
-        self.left_anchor = x - (x - self.left_anchor) / self.last_scale * self.zoom_scale
+        self.right_anchor = (
+            x - (x - self.right_anchor) / self.last_scale * self.zoom_scale
+        )
+        self.bottom_anchor = (
+            y - (y - self.bottom_anchor) / self.last_scale * self.zoom_scale
+        )
+        self.left_anchor = (
+            x - (x - self.left_anchor) / self.last_scale * self.zoom_scale
+        )
 
         self._adjust_boundaries()
 
@@ -226,7 +244,7 @@ class BoardCanvas(tk.Canvas):
         self.delete("tile")
         scaled_cell_width = int(self.cell_width * self.zoom_scale)
         scaled_cell_height = int(self.cell_height * self.zoom_scale)
-        
+
         # Left Side
         x = self.left
         while x > 0 - scaled_cell_width:
@@ -262,11 +280,14 @@ class BoardCanvas(tk.Canvas):
             self.height = self.winfo_height()
             self._redraw_canvas()
 
-    def bind_items(self):                
+    def bind_items(self):
         for item in self.board_items:
-            
+
             def item_on_click(e, item=item):
-                if not (len(self.selected_items) == 1 and next(iter(self.selected_items)) == item):
+                if not (
+                    len(self.selected_items) == 1
+                    and next(iter(self.selected_items)) == item
+                ):
                     for i in self.selected_items:
                         i.remove_highlight()
                     self.update_idletasks()
@@ -274,18 +295,20 @@ class BoardCanvas(tk.Canvas):
                     self.selected_items.clear()
                     self.selected_items.add(item)
                     self.side_panel.set_context(self.side_panel.Contexts.ITEM, item)
-                    
+
             def item_on_shift_click(e, item=item):
                 if item in self.selected_items:
                     self.selected_tabs.append(item)
-                    
-            item.bind("<1>", lambda event, item=item: self.set_drag_binding(event, item))
-            item.bind("<ButtonRelease>", lambda event, item=item: item.unbind("<B1-Motion>"))
-            item.bind("<1>", item_on_click)
-            item.bind("<Shift-1>", item_on_shift_click)
+
+            item.bind(
+                "<1>", lambda event, item=item: self.set_drag_binding(event, item)
+            )
+            item.bind(
+                "<ButtonRelease>", lambda event, item=item: item.unbind("<B1-Motion>")
+            )
             children = item.winfo_children()
             utils.set_bindings("<1>", item_on_click, item, *children)
-        
+            utils.set_bindings("<Shift-1>", item_on_shift_click, item, *children)
 
     def unbind_items(self):
         for item in self.board_items:
@@ -302,9 +325,10 @@ class BoardCanvas(tk.Canvas):
         item.lift()
 
         def displace_item(event: tk.Event, top, left, bottom, right):
+            print("On Motion")
             x = event.x_root
             y = event.y_root
-        
+
             if x > left and x < right and y > top and y < bottom:
                 dx = x - item.prev_x
                 dy = y - item.prev_y
@@ -312,7 +336,13 @@ class BoardCanvas(tk.Canvas):
                 item.prev_x = x
                 item.prev_y = y
 
-        item.bind("<B1-Motion>", lambda event: displace_item(event, top, left, bottom, right))
+        print("Set <B1-Motion>")
+        item.bind(
+            "<B1-Motion>",
+            lambda e, top=top, left=left, bottom=bottom, right=right: displace_item(
+                e, top, left, bottom, right
+            ),
+        )
 
     def start_pan(self, e: tk.Event):
         self.last_x = e.x
@@ -387,5 +417,19 @@ class BoardCanvas(tk.Canvas):
         return super().destroy()
 
     def _show_lx_ly(self):
-        self.create_line(self.zoom_point.x, self.zoom_point.y, self.zoom_point.x - self.lx, self.zoom_point.y, tags="line", fill=BLUE)
-        self.create_line(self.zoom_point.x, self.zoom_point.y, self.zoom_point.x, self.zoom_point.y - self.ly, tags="line", fill=BLUE)
+        self.create_line(
+            self.zoom_point.x,
+            self.zoom_point.y,
+            self.zoom_point.x - self.lx,
+            self.zoom_point.y,
+            tags="line",
+            fill=BLUE,
+        )
+        self.create_line(
+            self.zoom_point.x,
+            self.zoom_point.y,
+            self.zoom_point.x,
+            self.zoom_point.y - self.ly,
+            tags="line",
+            fill=BLUE,
+        )

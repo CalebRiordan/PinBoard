@@ -40,7 +40,7 @@ class BoardArea(tk.Frame):
         left_border = tk.Frame(self, bg=BORDER_COLOUR, width=border_thickness)
         left_border.grid(row=1, column=2, sticky="nsew")
 
-        self.pack(fill="both", expand=True)
+        self.pack(side="bottom", fill="both", expand=True)
 
 
 class RestoreButton(ctk.CTkCanvas):

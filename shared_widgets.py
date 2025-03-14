@@ -2,7 +2,9 @@ from abc import abstractmethod
 from enum import Enum
 import tkinter as tk
 from colours import *
+from database_service import DatabaseService
 from models import *
+from service_locator import Services
 from tooltip import ToolTip
 import utilities as utils
 import customtkinter as ctk
@@ -87,28 +89,11 @@ class ContextMenu(tk.Frame):
     buttons = None
     registry: dict = {}
 
-    @staticmethod
-    def get_instance():
-        if ContextMenu._instance is None:
-            ContextMenu()
-        return ContextMenu._instance
-
-    def __init__(self):
-        if ContextMenu._instance is not None:
-            raise Exception(
-                "TabHandler class is a singleton. An instance already exists"
-            )
-        else:
-            ContextMenu._instance = self
-
-    def create_surface(self):
+    def __init__(self, window=None):
+        self.window = window or Services.get("WindowManager").root
+        super().__init__(self.window, width=400, bg=HIGHLIGHT_COLOUR)
         self.surface = tk.Frame(self, background=PRIMARY_COLOUR)
         self.surface.pack(fill="both", padx=(1, 1), pady=(1, 1), expand=True)
-
-    def set_window(self, window: tk.Tk):
-        self.window = window
-        super().__init__(window, width=400, bg=HIGHLIGHT_COLOUR)
-        self.create_surface()
 
     def register(self, context: tk.Widget, buttons: tuple[tk.Frame]):
         self.registry[context] = buttons
@@ -151,6 +136,7 @@ class ContextMenu(tk.Frame):
             button,
             text=label,
             fg_color=PRIMARY_COLOUR,
+            text_color=BLACK,
             font=ctk.CTkFont(family="Helvetica", size=16),
             height=26,
         )
@@ -220,7 +206,7 @@ class BoardItemWidget(tk.Frame):
 
         self.prev_x = 0
         self.prev_y = 0
-        
+
         self.font_scale = int(11 * DEVICE_SCALE_FACTOR) + 2
 
         super().__init__(canvas, width=width, height=height, **kwargs)
@@ -257,12 +243,15 @@ class BoardItemWidget(tk.Frame):
         self.place(x=self.scaled_x, y=self.scaled_y)
 
     def highlight(self):
-        self.configure(highlightcolor=HIGHLIGHT_COLOUR, highlightthickness=4)
+        self.configure(
+            highlightcolor=HIGHLIGHT_COLOUR,
+            highlightbackground=HIGHLIGHT_COLOUR,
+            highlightthickness=3,
+        )
 
     def remove_highlight(self):
-        self.configure(highlightcolor=BLACK)
+        self.configure(highlightcolor=BLACK, highlightbackground=BLACK)
         self.after(10, lambda: self.configure(highlightthickness=2))
-        
 
     @abstractmethod
     def scale_content(self):
@@ -319,7 +308,7 @@ class NoteWidget(BoardItemWidget):
     def scale_content(self):
         super().scale_content()
         self.title_label.config(font=("Commons", self.font_scale + 3, "bold"))
-        self.text_widget.config(font=("Dubai Medium", self.font_scale))
+        self.content_widget.config(font=("Dubai Medium", self.font_scale))
 
     def set_colour(self, colour):
         self.configure(bg=colour)
@@ -433,7 +422,7 @@ class PageWidget(BoardItemWidget):
     def scale_content(self):
         super().scale_content()
         self.title_label.config(font=("Commons", self.font_scale + 3, "bold"))
-        self.text_widget.config(font=("Dubai Medium", self.font_scale))
+        self.content_widget.config(font=("Dubai Medium", self.font_scale))
 
     def set_colour(self, colour):
         self.configure(bg=colour)
@@ -442,17 +431,115 @@ class PageWidget(BoardItemWidget):
         super().set_colour(colour)
 
 
-class OpenBoardWindow(ctk.CTkToplevel):
+class OpenBoardWindow(tk.Toplevel):
     def __init__(self, parent, width, height):
-        self.parent = parent
-        super().__init__(parent, fg_color=PRIMARY_COLOUR)
-        self.wm_geometry(f"{int(width)}x{int(height)}+500+300")
 
-        self.overrideredirect(True)
-        updated_colour = tk.StringVar(value=PRIMARY_COLOUR)
-        CloseButton(self, 35, 20, self.destroy, thickness=4, rounding=0.2).place(
-            x=width - 40, y=5
+        print("OpenBoardWindow instantiated")
+        db_service: DatabaseService = Services.get("DatabaseService")
+        th = Services.get("TabHandler")
+        self.parent = parent
+
+        super().__init__(parent, bg=TRANSPARENT_COLOUR)
+        self.geometry(f"{int(width)}x{int(height)}+500+300")
+
+        # Make TopLevel widget transparent for rounded corners
+        self.attributes("-transparentcolor", TRANSPARENT_COLOUR)
+        self.update_idletasks()
+        canvas = RoundedBorderCanvas(
+            self,
+            width,
+            height,
+            canvas_colour=TRANSPARENT_COLOUR,
+            border_colour=BORDER_COLOUR,
+            rounding=0.1,
         )
+        canvas.pack(fill="both", expand=True)
+        canvas.draw_border()
+        self.overrideredirect(1)
+
+        top_frame = tk.Frame(canvas, bg=PRIMARY_COLOUR)
+        top_frame.pack(side="top", fill="x", padx=20, pady=(18, 20))
+        top_frame.rowconfigure(index=0, weight=0)
+        top_frame.columnconfigure(index=0, weight=1)
+        top_frame.columnconfigure(index=1, weight=0)
+
+        ctk.CTkLabel(
+            top_frame,
+            text="Select a board to open",
+            font=utils.ctk_font(22, True),
+            text_color=BLACK,
+            fg_color=PRIMARY_COLOUR,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w")
+
+        updated_colour = tk.StringVar(value=PRIMARY_COLOUR)
+        CloseButton(
+            top_frame,
+            30,
+            15,
+            self.destroy,
+            thickness=4,
+            rounding=0.4,
+            colourVar=updated_colour,
+        ).grid(row=0, column=1, sticky="e")
+
+        # Set grip at top
+        self.grip = tk.Frame(canvas, height=18)
+        self.grip.place(x=0, y=0, relwidth=1)
+        utils.set_opacity(self.grip, 0)
+        self.rel_x = 0
+        self.rel_y = 0
+        self.grip.bind("<1>", self.hold)
+        self.grip.bind("<B1-Motion>", self.move_window)
+
+        # Scrollable area
+        scrollable_canvas = tk.Canvas(canvas, highlightthickness=0, bg=PRIMARY_COLOUR)
+        scrollable_canvas.pack(
+            side="top", fill="both", expand=True, padx=20, pady=(20, 30)
+        )
+
+        # Get boards currently not open
+        all_boards = db_service.get_board_previews()
+        unopened_boards = [board for board in all_boards if board[0] not in th.get_open_board_ids()]
+
+        for board in unopened_boards:
+            self.BoardOption(scrollable_canvas, board)
+            
+    class BoardOption(ctk.CTkFrame):
+        def __init__(self, parent, board):
+            super().__init__(parent, fg_color=PRIMARY_COLOUR, border_width=0, corner_radius=2)
+            self.pack(side="top", fill="x")
+
+            self.rowconfigure(index=0, weight=0)
+            self.columnconfigure(index=0, weight=1)
+            self.columnconfigure(index=1, weight=0)
+            self.columnconfigure(index=2, weight=0)
+
+            parent.update_idletasks()
+            icon_size = int(parent.winfo_width()/20)
+
+            self.label = tk.Label(self, font=utils.ctk_font(18), bg=PRIMARY_COLOUR, fg=BLACK, text=board[1])
+            self.label.grid(row=0, column=0, sticky="w")
+            self.date_modified = tk.Label(self, font=utils.ctk_font(16), bg=PRIMARY_COLOUR, fg=GRAY, text=board[2].strftime("%Y/%m/%d %H:%M"))
+            self.date_modified.grid(row=0, column=1, sticky="e")
+            self.tk_image = utils.resize_image(PILImage.open("assets/icons/kebab.png"), icon_size)
+            self.icon_canvas = tk.Canvas(self, width=icon_size, height=icon_size*2, bg=PRIMARY_COLOUR, highlightthickness=0)
+            self.icon_canvas.create_image(icon_size/2, icon_size, image=self.tk_image, anchor="center")
+            self.icon_canvas.grid(row=0, column=2)
+            
+            utils.add_bg_colour_hover_effect(self.icon_canvas)
+            utils.add_bg_colour_hover_effect(self, partners=(self.label, self.date_modified, self.icon_canvas))
+            utils.add_bg_colour_hover_effect(self.label, partners=(self, self.date_modified, self.icon_canvas))
+            utils.add_bg_colour_hover_effect(self.date_modified, partners=(self.label, self, self.icon_canvas))
+
+    def move_window(self, e):
+        x = e.x_root - self.rel_x
+        y = e.y_root - self.rel_y
+        self.geometry(f"+{x}+{y}")
+
+    def hold(self, e):
+        self.rel_x = e.x
+        self.rel_y = e.y
 
     def destroy(self):
         self.parent.focus()
@@ -473,6 +560,11 @@ class RoundedBorderCanvas(tk.Canvas):
         border_colour=HIGHLIGHT_COLOUR,
         rounding=0.4,
     ):
+        """
+        Canvas widget with rounded rectangle and border drawn on top to give the illusion of
+        a rounded button.
+        IMPORTANT: Must call draw_border on the RoundedBorderCanvas AFTER it has been packed, gridded, or placed
+        """
         super().__init__(
             parent, width=width, height=height, bg=canvas_colour, highlightthickness=0
         )
@@ -480,12 +572,14 @@ class RoundedBorderCanvas(tk.Canvas):
         self.height = height
         self.thickness = thickness
         self.rounding = rounding
+        self.bg_colour = bg_colour
         self.border_colour = border_colour
+        
+        self.update_idletasks()
 
-        self.after(50, lambda: self.draw_border(bg_colour=bg_colour))
-
-    def draw_border(self, bg_colour):
+    def draw_border(self, bg_colour = None):
         self.delete("all")
+        bg_colour = bg_colour or self.bg_colour
         utils.rounded_rectangle(
             self,
             int(self.width - 2),
@@ -575,7 +669,7 @@ class TagEditor(ctk.CTkFrame):
                 # TODO: popup -> tag is too long
                 print("Tag can only have a maximum of 15 characters")
                 return
-            if len(self.list) > 10:
+            if len(self.tag_list) > 10:
                 # TODO: popup -> too many tags
                 print("too many tags")
                 return
@@ -742,7 +836,6 @@ class MainSidePanelFrame(tk.Frame):
         self.tags_editor = self.TagsSidePanel(self, width, spacing + 3, window)
 
     def clear(self):
-        print("Clear")
         for section in self.displayed_sections:
             section.hide()
 
@@ -759,8 +852,12 @@ class MainSidePanelFrame(tk.Frame):
                 self.search.show()
                 self.board_options.show(context_instance)
                 self.add_items_widgets.show()
-                
-                self.displayed_sections = [self.search, self.board_options, self.add_items_widgets]
+
+                self.displayed_sections = [
+                    self.search,
+                    self.board_options,
+                    self.add_items_widgets,
+                ]
             case self.Contexts.ITEM:
                 if not isinstance(context_instance, BoardItemWidget):
                     raise ValueError(
@@ -773,7 +870,12 @@ class MainSidePanelFrame(tk.Frame):
                 self.colour_selector.show(context_instance)
                 self.tags_editor.show(context_instance)
 
-                self.displayed_sections = [self.search, self.board_options, self.colour_selector, self.tags_editor]
+                self.displayed_sections = [
+                    self.search,
+                    self.board_options,
+                    self.colour_selector,
+                    self.tags_editor,
+                ]
             case self.Contexts.TAB:
                 self.clear()
 
@@ -781,7 +883,11 @@ class MainSidePanelFrame(tk.Frame):
                 self.board_options.show(None)
                 self.add_items_widgets.show()
 
-                self.displayed_sections = [self.search, self.board_options, self.add_items_widgets]
+                self.displayed_sections = [
+                    self.search,
+                    self.board_options,
+                    self.add_items_widgets,
+                ]
 
     ### ========================================== ###
     ### ============== Search Notes ============== ###
@@ -894,6 +1000,8 @@ class MainSidePanelFrame(tk.Frame):
             self.board = None
             self.spacing = spacing
             self.button_height = int(height * 0.28)
+            app_width = utils.get_setting("APP_WIDTH_INITIAL", width)
+            app_height = utils.get_setting("APP_HEIGHT_INITIAL", height)
 
             # ======== Open Board ========
             # Open Board - Widgets
@@ -901,6 +1009,7 @@ class MainSidePanelFrame(tk.Frame):
                 self, width, self.button_height
             )
             self.open_board_button.pack(side="top")
+            self.open_board_button.draw_border()
             self.open_board_image = utils.resize_image(
                 PILImage.open("assets/images/open_board.png"), self.button_height - 14
             )
@@ -912,17 +1021,16 @@ class MainSidePanelFrame(tk.Frame):
                 bg=PRIMARY_COLOUR,
             )
             open_board_label.place(relx=rel_x, rely=0.5, anchor=tk.CENTER)
-            
+
             # Open Board - Events
             self.set_redraw_on_hover(self.open_board_button, self.open_board_image, 14)
             utils.add_bg_colour_hover_effect(self.open_board_button, open_board_label)
             utils.set_bindings(
                 "<1>",
-                lambda event: OpenBoardWindow(self, width * 2, height * 2),
+                lambda event: OpenBoardWindow(self, app_width * 0.3, app_height * 0.6),
                 self.open_board_button,
                 open_board_label,
             )
-
 
             # Frame to pack Lower three buttons onto
             lower_option_group = tk.Frame(
@@ -938,6 +1046,7 @@ class MainSidePanelFrame(tk.Frame):
                 lower_option_group, save_button_width, self.button_height
             )
             self.save_board_button.pack(side="left")
+            self.save_board_button.draw_border()
             self.save_board_image = utils.resize_image(
                 PILImage.open("assets/images/save.png"), self.button_height - 23
             )
@@ -949,7 +1058,7 @@ class MainSidePanelFrame(tk.Frame):
                 bg=PRIMARY_COLOUR,
             )
             save_board_label.place(relx=rel_x, rely=0.5, anchor=tk.CENTER)
-            
+
             # Save Board - Events
             self.set_redraw_on_hover(self.save_board_button, self.save_board_image, 14)
             utils.add_bg_colour_hover_effect(self.save_board_button, save_board_label)
@@ -960,10 +1069,11 @@ class MainSidePanelFrame(tk.Frame):
                 lower_option_group, width / 4 - 12, self.button_height
             )
             self.delete_board_button.pack(side="left", padx=(5, 0))
+            self.delete_board_button.draw_border()
             self.delete_board_image = utils.resize_image(
                 PILImage.open("assets/images/delete.png"), self.button_height - 20
             )
-            
+
             # Delete Board - Events
             self.set_redraw_on_hover(
                 self.delete_board_button, self.delete_board_image, 10
@@ -975,6 +1085,7 @@ class MainSidePanelFrame(tk.Frame):
                 lower_option_group, width / 4 - 12, self.button_height
             )
             self.add_board_button.pack(side="left", padx=(5, 0))
+            self.add_board_button.draw_border()
             self.add_board_button.pack_propagate(False)
             plus_icon = tk.Label(
                 self.add_board_button,
@@ -989,10 +1100,12 @@ class MainSidePanelFrame(tk.Frame):
             self.set_redraw_on_hover(self.add_board_button)
             utils.add_bg_colour_hover_effect(self.add_board_button, plus_icon)
 
-        # Method to redraw the border, background, and image of button every time the mouse hovers over
         def set_redraw_on_hover(
             self, canvas: RoundedBorderCanvas, image: PILImage = None, padding_left=0
         ):
+            """
+            Method to redraw the border, background, and image of button every time the mouse hovers over
+            """
             x = int(image.width() / 2 + padding_left) if image else 0
             y = self.button_height / 2
             enter_commands = (
@@ -1010,20 +1123,16 @@ class MainSidePanelFrame(tk.Frame):
 
             utils.add_hover_commands(canvas, enter_commands, leave_commands)
 
-        def center_coords(self, image: PILImage, padding_left=7):
-            return int(image.width() / 2 + padding_left), self.button_height / 2
-
         def redraw_button(
             self,
             button: RoundedBorderCanvas,
             image: PILImage = None,
-            colour=PRIMARY_COLOUR,
             padding=0,
         ):
             x = int(image.width() / 2 + padding) if image else 0
             y = self.button_height / 2
 
-            button.draw_border(colour or PRIMARY_COLOUR)
+            button.draw_border()
             if image:
                 button.create_image(x, y, image=image, anchor=tk.CENTER)
 
@@ -1033,7 +1142,7 @@ class MainSidePanelFrame(tk.Frame):
 
             self.pack(side="top", pady=(self.spacing, 0))
             self.update_idletasks()
-            
+
             self.redraw_button(
                 self.open_board_button, self.open_board_image, padding=14
             )
@@ -1047,7 +1156,7 @@ class MainSidePanelFrame(tk.Frame):
 
         def hide(self):
             self.pack_forget()
-    
+
     ### ========================================= ###
     ### =============== Add Items =============== ###
     ### ========================================= ###

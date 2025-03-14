@@ -5,6 +5,7 @@ from datetime import date
 import customtkinter as ctk
 from board_canvas import BoardCanvas
 from models import *
+from service_locator import Services
 from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
 from typing import List
 import tkinter as tk
@@ -32,22 +33,10 @@ class BoardHandler:
         The steps involved in
     """
 
-    @staticmethod
-    def get_instance(canvas_parent=None, side_panel = None):
-        if BoardHandler._instance is None:
-            if not (canvas_parent and side_panel):
-                raise ValueError("BoardHandler cannot be initialized without a canvas parent and side panel.")
-            return BoardHandler()
-        return BoardHandler._instance
-
     def __init__(self, canvas_parent, side_panel):
-        if BoardHandler._instance is not None:
-            raise Exception("BoardHandler class is a singleton. An instance already exists")
-        BoardHandler._instance = self
         self._canvas_parent = canvas_parent
         self.side_panel: MainSidePanelFrame = side_panel
-
-        self.db_service = DatabaseService()
+        self.db_service = Services.get("DatabaseService")
 
     def initialize_boards(self):
         # TODO:
@@ -96,14 +85,18 @@ class BoardHandler:
             self.set_side_panel_context()
             self.current_canvas().bind("<1>", self.set_side_panel_context)
         else:
-            raise ValueError(f"Board with id '{id}' not found amongst currently open boards")
+            raise ValueError(
+                f"Board with id '{id}' not found amongst currently open boards"
+            )
 
     def new_board(self):
         new_board_id = self.generate_new_board_id()
         new_board = Board(new_board_id, "", date.today(), True, [])
         new_board.saved = False
         self._open_boards[new_board_id] = new_board
-        self._open_canvases[new_board_id] = BoardCanvas(self._canvas_parent, self.side_panel)
+        self._open_canvases[new_board_id] = BoardCanvas(
+            self._canvas_parent, self.side_panel
+        )
         self._all_boards_ids.append(new_board_id)
         return new_board
 
@@ -115,7 +108,9 @@ class BoardHandler:
             board: Board = self.db_service.get_board(id)
             if board:
                 self._open_boards[id] = board
-                self._open_canvases[id] = BoardCanvas(self._canvas_parent, self.side_panel, board.board_items)
+                self._open_canvases[id] = BoardCanvas(
+                    self._canvas_parent, self.side_panel, board.board_items
+                )
             else:
                 raise ValueError(f"Board with id '{id} does not exist'")
 
@@ -129,7 +124,9 @@ class BoardHandler:
             if self._current_board != None:
                 board_id = self._current_board.board_id
             else:
-                raise ValueError(f"No current board set - Please specify a board id for the board to close.")
+                raise ValueError(
+                    f"No current board set - Please specify a board id for the board to close."
+                )
         try:
             self._open_boards.pop(board_id)
             self._open_canvases[board_id].destroy()
@@ -158,11 +155,12 @@ class BoardHandler:
         for i in range(1, len(self._all_boards_ids) + 2):
             if i not in self._all_boards_ids:
                 return i
-        raise Exception("New board ID could not be generated. All IDs within range already taken")
+        raise Exception(
+            "New board ID could not be generated. All IDs within range already taken"
+        )
 
-    def set_side_panel_context(self, event = None):
-        self.side_panel.set_context(self.side_panel.Contexts.BOARD, self._current_board) 
-        
+    def set_side_panel_context(self, event=None):
+        self.side_panel.set_context(self.side_panel.Contexts.BOARD, self._current_board)
 
 
 # Singleton class for TABS and BOARDS with related utility methods
@@ -175,25 +173,15 @@ class TabHandler:
     window = None
     current_tab: "TabHandler.Tab" = None
 
-    @staticmethod
-    def get_instance(window: tk.Tk = None):
-        if TabHandler._instance is None:
-            if window:
-                TabHandler(window)
-            else:
-                raise Exception("TabHandler has not been initialized - 'window' argument must be passed.")
-        return TabHandler._instance
-
-    def __init__(self, window: tk.Tk):
-        if TabHandler._instance is not None:
-            raise Exception("TabHandler class is a singleton. An instance already exists")
-        else:
-            TabHandler._instance = self
-            self.window = window
+    def __init__(self, window: tk.Tk, board_handler: BoardHandler):
+        self.window = window
+        self._bh = board_handler
 
     class TabList(tk.Frame):
         def __init__(self, parent):
-            super().__init__(parent, bg=PRIMARY_COLOUR, height=utils.get_setting("TAB_LIST_HEIGHT"))
+            super().__init__(
+                parent, bg=PRIMARY_COLOUR, height=utils.get_setting("TAB_LIST_HEIGHT")
+            )
 
             # create lists for each tab list object
             self.tabs: List[TabHandler.Tab] = []
@@ -202,9 +190,9 @@ class TabHandler:
 
             self.add_tab_button = TabHandler.AddTabButton(self)
 
-            # Set binding for context menu
-            cm = ContextMenu.get_instance()
-            buttons = self.tab_list_cm_buttons(cm, TabHandler.get_instance())
+            # Set binding for tab list context menu
+            cm: ContextMenu = Services.get("ContextMenu")
+            buttons = self.tab_list_cm_buttons(cm)
             cm.register(self, buttons)
             self.bind("<Button-3>", lambda event: cm.open_menu(self, event))
 
@@ -251,7 +239,9 @@ class TabHandler:
             tab_list_width = self.winfo_width()
             add_button_width = utils.get_setting("TAB_HEIGHT")
             space_for_tabs = tab_list_width - (add_button_width + 15)
-            not_enough_space = space_for_tabs <= ((utils.get_setting("TAB_WIDTH") + 10) * len(self.tabs))
+            not_enough_space = space_for_tabs <= (
+                (utils.get_setting("TAB_WIDTH") + 10) * len(self.tabs)
+            )
             new_tab_width = utils.get_setting("TAB_WIDTH")
             # If ADDING a tab
             if not remove:
@@ -269,9 +259,10 @@ class TabHandler:
                 new_tab_width = int(usable_space_per_tab) - 10
             repack_tabs(self, new_tab_width)
 
-        def tab_list_cm_buttons(self, cm: ContextMenu, th: "TabHandler"):
+        def tab_list_cm_buttons(self, cm: ContextMenu):
             # Prepare all context menu buttons for a Tab
 
+            th = Services.get("TabHandler")
             close_all = cm.button("Close All Tabs", lambda event: th.close_all_tabs())
             open = cm.button("Open New Tab", lambda event: th.add_new_tab())
 
@@ -291,7 +282,9 @@ class TabHandler:
             self.tab_list = parent
             self.disabled = False
 
-            self.label = tk.Label(self, bg=PRIMARY_COLOUR, text="+", font=("", 34), fg=BLACK)
+            self.label = tk.Label(
+                self, bg=PRIMARY_COLOUR, text="+", font=("", 34), fg=BLACK
+            )
             self.label.pack(fill="both", expand=True, padx=5, pady=5)
             self.label.bind("<Button-1>", self.add_tab)
 
@@ -299,7 +292,7 @@ class TabHandler:
 
         def add_tab(self, event):
             if (not self.disabled) and (len(self.tab_list.tabs) < 10):
-                th = TabHandler.get_instance()
+                th = Services.get("TabHandler")
                 th.add_new_tab()
 
     class Tab(tk.Frame):
@@ -321,7 +314,6 @@ class TabHandler:
             self.board_id = board_id
             self.title = title
             self.button_size = tab_height - 25
-            th = TabHandler.get_instance()
             font = ctk.CTkFont(family="Helvetica", size=16, weight="bold")
             updated_colour = tk.StringVar(value=PRIMARY_COLOUR)
 
@@ -360,7 +352,8 @@ class TabHandler:
             self.bind_tab("<Button-1>", lambda event: th.swap_tabs(self))
 
             # ============= Context Menu setup + binding =============
-            cm = ContextMenu.get_instance()
+            th: TabHandler = Services.get("TabHandler")
+            cm: ContextMenu = Services.get("ContextMenu")
             buttons = self.tab_cm_buttons(cm, th)
             cm.register(self, buttons)
             self.bind_tab("<Button-3>", lambda event: cm.open_menu(self, event))
@@ -398,7 +391,10 @@ class TabHandler:
             self.close_after_rename = False
             self.tooltip = self.create_tooltip(label_text)
             utils.set_defocus_on(
-                th.window, self.entry, [self.entry, self.close_button], lambda: self.process_rename(th)
+                th.window,
+                self.entry,
+                [self.entry, self.close_button],
+                lambda: self.process_rename(th),
             )
 
         def create_tooltip(self, text):
@@ -424,7 +420,9 @@ class TabHandler:
         def process_rename(self, th: "TabHandler" = None, event=None):
             async def save_board(th_):
                 if th == None:
-                    raise ValueError("TabHandler instance must be provided when renaming a board before closing")
+                    raise ValueError(
+                        "TabHandler instance must be provided when renaming a board before closing"
+                    )
                 if self.close_after_rename:
                     await th_.save_and_close_tab(self)
                     self.close_after_rename = False
@@ -448,7 +446,10 @@ class TabHandler:
                         self.entry.focus()
                         return
                 else:
-                    messagebox.showerror("Invalid Name", "Please do not use special characters in your board name.")
+                    messagebox.showerror(
+                        "Invalid Name",
+                        "Please do not use special characters in your board name.",
+                    )
                     self.entry.focus()
                     return
             else:
@@ -517,7 +518,7 @@ class TabHandler:
         def __init__(self, parent, tab_to_close, colourVar: tk.StringVar = None):
             button_size = tab_to_close.button_size
             cross_size = button_size * 0.6
-            th = TabHandler.get_instance()
+            th = Services.get("TabHandler")
 
             def command():
                 return th.close_tab(tab_to_close)
@@ -539,12 +540,14 @@ class TabHandler:
                 leave_commands=lambda: self.draw_x(GRAY),
             )
 
-    def create_tab_list(self, tabs_and_board):
-        self._tab_list = TabHandler.TabList(tabs_and_board)
+    def create_tab_list_on(self, parent):
+        self._tab_list = TabHandler.TabList(parent)
         self._tab_list.pack(side="top", fill="x")
+        # self._tab_list.after(300, self.initialize_tab_list)
+        self._tab_list.update_idletasks()
+        self.initialize_tab_list()
 
     def initialize_tab_list(self):
-        self._bh = BoardHandler.get_instance()
         # Create all the tab objects and populate th.tab_list.tabs
         open_boards = self._bh.initialize_boards()
         for board in open_boards:
@@ -661,7 +664,9 @@ class TabHandler:
         """
         board = self._bh.get_board(tab.board_id)
         if not board.saved:
-            res = messagebox.askyesnocancel("Save Board", "Do you want to save this board?")
+            res = messagebox.askyesnocancel(
+                "Save Board", "Do you want to save this board?"
+            )
             if res:
                 # Save board
                 if board.name == "":
@@ -723,7 +728,9 @@ class TabHandler:
         tab.config(bg=PRIMARY_COLOUR)
 
     def find_tab_by_id(self, board_id):
-        return next((tab for tab in self._tab_list.tabs if tab.board_id == board_id), None)
+        return next(
+            (tab for tab in self._tab_list.tabs if tab.board_id == board_id), None
+        )
 
     def save_last_opened_tab(tab_id):
         utils.update_setting("LAST_TAB", tab_id)
@@ -731,3 +738,6 @@ class TabHandler:
     def delete_board(self, tab: "Tab"):
         self.close_tab(tab)
         # self._bh.delete_board(tab.board_id)
+
+    def get_open_board_ids(self):
+        return self._bh._open_boards.keys()

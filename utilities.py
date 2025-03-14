@@ -109,7 +109,9 @@ def _create_mock_data():
     # Create board items for Board 2
     board_2_items = [
         Note(4, "Note 2", date(2024, 3, 21), "This is the second note.", 40, 100),
-        Page(5, "Page 2", date(2024, 3, 21), "This is the content of page 2.", 1000, 500),
+        Page(
+            5, "Page 2", date(2024, 3, 21), "This is the content of page 2.", 1000, 500
+        ),
         Image(6, "Image 2", date(2024, 3, 21), _create_test_image_bytes(), 120, 350),
     ]
 
@@ -119,7 +121,7 @@ def _create_mock_data():
         Page(8, "Page 3", date(2023, 1, 2), "This is the content of page 3.", 40, 550),
         Image(9, "Image 3", date(2023, 1, 2), _create_test_image_bytes(), 50, 100),
     ]
-    
+
     # board_4_items = [
     #     Note(10, "Test Note", date(2023, 1, 2), "This is another note.", 1, 5),
     #     Note(11, "Test Note", date(2023, 1, 2), "This is another note.", 281, 5),
@@ -138,7 +140,9 @@ def _create_mock_data():
         Board(1, "First Board Long Name", date(2020, 5, 2), True, board_1_items),
         Board(2, "Second Board", date(2024, 3, 21), False, board_2_items),
         Board(3, "Third Board", date(2023, 1, 2), False, board_3_items),
-        Board(4, "Fourth Board", date(2024, 10, 9), True, []),  # No items for this board
+        Board(
+            4, "Fourth Board", date(2024, 10, 9), True, []
+        ),  # No items for this board
     ]
 
     return all_boards
@@ -196,12 +200,35 @@ def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
     inner_bottom = offset + shape_size - r * 2
 
     # Draw sectors
-    canvas.create_arc(offset, offset, offset + 2 * r, offset + 2 * r, extent=90, start=90, fill=colour, outline=colour)
     canvas.create_arc(
-        inner_bottom, offset, offset + shape_size, offset + 2 * r, extent=90, start=0, fill=colour, outline=colour
+        offset,
+        offset,
+        offset + 2 * r,
+        offset + 2 * r,
+        extent=90,
+        start=90,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_arc(
-        offset, inner_bottom, offset + 2 * r, offset + shape_size, extent=90, start=180, fill=colour, outline=colour
+        inner_bottom,
+        offset,
+        offset + shape_size,
+        offset + 2 * r,
+        extent=90,
+        start=0,
+        fill=colour,
+        outline=colour,
+    )
+    canvas.create_arc(
+        offset,
+        inner_bottom,
+        offset + 2 * r,
+        offset + shape_size,
+        extent=90,
+        start=180,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_arc(
         inner_bottom,
@@ -215,14 +242,25 @@ def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
     )
 
     canvas.create_rectangle(
-        offset + r, offset, offset + shape_size - r, offset + shape_size, fill=colour, outline=colour
+        offset + r,
+        offset,
+        offset + shape_size - r,
+        offset + shape_size,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_rectangle(
-        offset, offset + r, offset + shape_size, offset + shape_size - r, fill=colour, outline=colour
+        offset,
+        offset + r,
+        offset + shape_size,
+        offset + shape_size - r,
+        fill=colour,
+        outline=colour,
     )
 
 
 def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE):
+    canvas.update_idletasks()
     x_offset = (canvas.winfo_width() - width) / 2
     y_offset = (canvas.winfo_height() - height) / 2
     r = rounding * min(width, height) / 2
@@ -231,13 +269,34 @@ def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE
 
     # Draw sectors
     canvas.create_arc(
-        x_offset, y_offset, x_offset + 2 * r, y_offset + 2 * r, extent=90, start=90, fill=colour, outline=colour
+        x_offset,
+        y_offset,
+        x_offset + 2 * r,
+        y_offset + 2 * r,
+        extent=90,
+        start=90,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_arc(
-        inner_right_x, y_offset, x_offset + width, y_offset + 2 * r, extent=90, start=0, fill=colour, outline=colour
+        inner_right_x,
+        y_offset,
+        x_offset + width,
+        y_offset + 2 * r,
+        extent=90,
+        start=0,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_arc(
-        x_offset, inner_bottom_y, x_offset + 2 * r, y_offset + height, extent=90, start=180, fill=colour, outline=colour
+        x_offset,
+        inner_bottom_y,
+        x_offset + 2 * r,
+        y_offset + height,
+        extent=90,
+        start=180,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_arc(
         inner_right_x,
@@ -251,10 +310,20 @@ def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE
     )
 
     canvas.create_rectangle(
-        x_offset + r, y_offset, x_offset + width - r, y_offset + height, fill=colour, outline=colour
+        x_offset + r,
+        y_offset,
+        x_offset + width - r,
+        y_offset + height,
+        fill=colour,
+        outline=colour,
     )
     canvas.create_rectangle(
-        x_offset, y_offset + r, x_offset + width, y_offset + height - r, fill=colour, outline=colour
+        x_offset,
+        y_offset + r,
+        x_offset + width,
+        y_offset + height - r,
+        fill=colour,
+        outline=colour,
     )
 
 
@@ -302,8 +371,12 @@ def add_hover_effect(
             )
     previous_colour = target_widget.cget("background")
 
-    widget.bind("<Enter>", lambda event: hover_effect(True, target_widget, hover_colour))
-    widget.bind("<Leave>", lambda event: hover_effect(False, target_widget, hover_colour))
+    widget.bind(
+        "<Enter>", lambda event: hover_effect(True, target_widget, hover_colour)
+    )
+    widget.bind(
+        "<Leave>", lambda event: hover_effect(False, target_widget, hover_colour)
+    )
 
     def hover_effect(mouse_enter, target_widget, hover_colour):
         nonlocal previous_colour
@@ -316,7 +389,9 @@ def add_hover_effect(
                 hover_colour = adjust_brightness(previous_colour, 0.2)
 
             if shape == "rectangle":
-                rounded_rectangle(target_widget, effect_width, effect_height, rounding, hover_colour)
+                rounded_rectangle(
+                    target_widget, effect_width, effect_height, rounding, hover_colour
+                )
             elif shape == "square":
                 rounded_square(target_widget, effect_width, rounding, hover_colour)
 
@@ -345,8 +420,15 @@ def remove_hover_effect(widget: tk.Widget):
     widget.unbind("<Enter>")
     widget.unbind("<Leave>")
 
+def is_ctk_widget(widget):
+    if isinstance(widget, ctk.CTkBaseClass):
+        return True
+    else:
+        return False
 
-def add_bg_colour_hover_effect(widget: tk.Widget, target_widget: tk.Widget = None, hover_colour=None, partners=()):
+def add_bg_colour_hover_effect(
+    widget: tk.Widget, target_widget: tk.Widget = None, hover_colour=None, partners=()
+):
     if target_widget is None:
         target_widget = widget
     previous_colour = None
@@ -359,34 +441,44 @@ def add_bg_colour_hover_effect(widget: tk.Widget, target_widget: tk.Widget = Non
 
         if mouse_enter:
 
-            previous_colour = widget.cget("background")
+            if not is_ctk_widget(target_widget):
+                previous_colour = target_widget.cget("background")
+            else:
+                previous_colour = target_widget.cget("fg_color")
+
             if hover_colour is None:
                 hover_colour = adjust_brightness(previous_colour, 0.2)
 
-            try:
+            if not is_ctk_widget(target_widget):
                 target_widget.configure(bg=hover_colour)
-            except:
-                if isinstance(target_widget, ctk.CTkBaseClass):
-                    target_widget.configure(fg_colour=hover_colour)
-
-            for w in partners:
-                try:
-                    w.configure(bg=hover_colour)
-                except:
-                    w.configure(fg_color=hover_colour)
+                for w in partners:
+                    if not is_ctk_widget(w):
+                        w.configure(bg=hover_colour)
+                    else:
+                        w.configure(fg_color=hover_colour)
+            else:
+                target_widget.configure(fg_color=hover_colour)
+                for w in partners:
+                    if not is_ctk_widget(w):
+                        w.configure(bg=hover_colour)
+                    else:
+                        w.configure(fg_color=hover_colour)
 
         else:
-            try:
+            if not is_ctk_widget(target_widget):
                 target_widget.configure(bg=previous_colour)
-            except:
-                if isinstance(target_widget, ctk.CTkBaseClass):
-                    target_widget.configure(fg_colour=previous_colour)
-
-            for w in partners:
-                try:
-                    w.configure(bg=previous_colour)
-                except:
-                    w.configure(fg_color=previous_colour)
+                for w in partners:
+                    if not is_ctk_widget(w):
+                        w.configure(bg=previous_colour)
+                    else:
+                        w.configure(fg_color=previous_colour)
+            else:
+                target_widget.configure(fg_color=previous_colour)
+                for w in partners:
+                    if not is_ctk_widget(w):
+                        w.configure(bg=previous_colour)
+                    else:
+                        w.configure(fg_color=previous_colour)
 
 
 def set_opacity(widget: tk.Widget, value: float):
@@ -409,7 +501,10 @@ def set_opacity(widget: tk.Widget, value: float):
 
 
 def set_defocus_on(
-    trigger_widget: tk.Widget, focused_widget: tk.Widget, exceptions: list[tk.Widget] = [], defocus_command=None
+    trigger_widget: tk.Widget,
+    focused_widget: tk.Widget,
+    exceptions: list[tk.Widget] = [],
+    defocus_command=None,
 ):
     def set_focus_binding(event):
         def remove_focus(event):
@@ -439,10 +534,11 @@ def make_label(master, width=None, height=None, *args, **kwargs):
     label.pack(fill="both", expand=1)
     return frame
 
+
 def set_bindings(sequence: str, command, *widgets):
     for widget in widgets:
         if not isinstance(widget, tk.Widget):
-            raise ValueError(f"*widgets argument must contain only widgets, not '{type(widget)}'") 
-        widget.bind(sequence=sequence, func=command)
-                
-        
+            raise ValueError(
+                f"*widgets argument must contain only widgets, not '{type(widget)}'"
+            )
+        widget.bind(sequence=sequence, func=command, add=True)
