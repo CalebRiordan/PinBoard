@@ -1,6 +1,7 @@
 import random
 import json
 from io import BytesIO
+from typing import List, Union, Iterable
 from PIL import Image, ImageTk
 from datetime import date
 import tkinter as tk
@@ -12,7 +13,6 @@ __all__ = ["_create_mock_data"]
 
 with open("app_settings.json", "r") as f:
     settings = json.load(f)
-
 
 def resize_image(image: Image.Image, maximum_size: int):
     aspect_ratio = image.width / image.height
@@ -28,16 +28,13 @@ def resize_image(image: Image.Image, maximum_size: int):
 
     return ImageTk.PhotoImage(image.resize((image_width, image_height)))
 
-
 def get_setting(setting: str, default=None):
     return settings.get(setting, default)
-
 
 def update_setting(key: str, value):
     if key in settings:
         settings[key] = value
         _write_settings_to_file()
-
 
 def new_setting(key: str, value):
     if key not in settings:
@@ -45,7 +42,6 @@ def new_setting(key: str, value):
         _write_settings_to_file()
     else:
         raise Exception(f"setting '{key}' already exists.")
-
 
 def get_display_size():
     # returns the width and height of the screen using a temporary Tk() instance
@@ -57,24 +53,20 @@ def get_display_size():
 
     return width, height
 
-
 def _write_settings_to_file():
     with open("app_settings.json", "w") as f:
         json.dump(settings, f, indent=4)
-
 
 def bytes_to_image(image_bytes):
     input_stream = BytesIO(image_bytes)
     pil_image = Image.open(input_stream)
     return pil_image
 
-
 def _create_test_image_bytes():
     img = Image.new("RGB", (100, 100), color="red")
     img_byte_arr = BytesIO()
     img.save(img_byte_arr, format="PNG")
     return img_byte_arr.getvalue()
-
 
 def random_colour():
     colours = (
@@ -92,7 +84,6 @@ def random_colour():
         STICKY_NOTE_GRAY,
     )
     return colours[random.randint(0, len(colours) - 1)]
-
 
 def _create_mock_data():
     # Use lazy importing to avoid circular import error
@@ -147,7 +138,6 @@ def _create_mock_data():
 
     return all_boards
 
-
 def _draw_image_test(canvas, x, y, cell_width, cell_height, zoom_scale):
     canvas.create_rectangle(
         x,
@@ -158,7 +148,6 @@ def _draw_image_test(canvas, x, y, cell_width, cell_height, zoom_scale):
         outline=BLACK,
         tags="tile",
     )
-
 
 def adjust_brightness(hex_colour, factor=0):
     factor /= 1.5
@@ -189,10 +178,8 @@ def adjust_brightness(hex_colour, factor=0):
     # Convert back to hex
     return "#{:02x}{:02x}{:02x}".format(*adjusted_rgb)
 
-
 def ctk_font(size: int = 16, bold: bool = False):
     return ctk.CTkFont(family="Helvetica", size=size, weight="bold" if bold else None)
-
 
 def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
     offset = (canvas.winfo_width() - shape_size) / 2
@@ -257,7 +244,6 @@ def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
         fill=colour,
         outline=colour,
     )
-
 
 def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE):
     canvas.update_idletasks()
@@ -326,8 +312,10 @@ def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE
         outline=colour,
     )
 
-
-def add_hover_commands(widget: tk.Widget, enter_commands=(), leave_commands=()):
+def add_hover_commands(widgets: Union[tk.Widget, Iterable[tk.Widget]], enter_commands=(), leave_commands=()):
+    if not isinstance(widgets, Iterable):  
+        widgets = [widgets]
+    
     if enter_commands is None:
         enter_commands = []
     elif callable(enter_commands):
@@ -348,12 +336,12 @@ def add_hover_commands(widget: tk.Widget, enter_commands=(), leave_commands=()):
             if callable(command):
                 command()
 
-    widget.bind("<Enter>", execute_enter_commands, add=True)
-    widget.bind("<Leave>", execute_leave_commands, add=True)
-
+    for w in widgets:
+        w.bind("<Enter>", execute_enter_commands, add=True)
+        w.bind("<Leave>", execute_leave_commands, add=True)
 
 def add_hover_effect(
-    widget: tk.Widget,
+    widgets: Union[tk.Widget, Iterable[tk.Widget]],
     shape: str,
     hover_colour=None,
     rounding=0,
@@ -362,21 +350,27 @@ def add_hover_effect(
     restore_foreground_command=None,
     partners=(),
 ):
-    if target_widget is None:
-        if isinstance(widget, tk.Canvas):
-            target_widget = widget
-        else:
-            raise Exception(
-                "No target canvas provided ('target_widget' attribute). Please ensure 'widget' argument is a tk.Canvas"
-            )
-    previous_colour = target_widget.cget("background")
 
-    widget.bind(
-        "<Enter>", lambda event: hover_effect(True, target_widget, hover_colour)
-    )
-    widget.bind(
-        "<Leave>", lambda event: hover_effect(False, target_widget, hover_colour)
-    )
+    if not isinstance(widgets, Iterable):
+        if isinstance(widgets, (tk.Canvas, ctk.CTkCanvas)) and not target_widget:
+            target_widget = widgets
+        elif not target_widget:
+            raise Exception(
+                "No target canvas provided ('target_widget' attribute) - 'widget' argument must therefore be a tk.Canvas"
+            )
+        widgets = [widgets]
+    elif not target_widget:
+        raise Exception("Multiple widgets provided - please specify a target canvas widget for the hover effect")
+        
+    previous_colour = target_widget.cget(tk_or_ctk_arguments(target_widget, "background"))
+        
+    for w in widgets:
+        w.bind(
+            "<Enter>", lambda event: hover_effect(True, target_widget, hover_colour)
+        )
+        w.bind(
+            "<Leave>", lambda event: hover_effect(False, target_widget, hover_colour)
+        )
 
     def hover_effect(mouse_enter, target_widget, hover_colour):
         nonlocal previous_colour
@@ -396,10 +390,7 @@ def add_hover_effect(
                 rounded_square(target_widget, effect_width, rounding, hover_colour)
 
             for w in partners:
-                try:
-                    w.configure(bg=hover_colour)
-                except:
-                    w.configure(fg_color=hover_colour)
+                configure_widget(w, bg=hover_colour)
 
             if callable(restore_foreground_command):
                 restore_foreground_command()
@@ -407,79 +398,80 @@ def add_hover_effect(
             target_widget.delete("all")  # clear canvas
 
             for w in partners:
-                try:
-                    w.configure(bg=previous_colour)
-                except:
-                    w.configure(fg_color=previous_colour)
+                configure_widget(w, bg=previous_colour)
 
             if callable(restore_foreground_command):
                 restore_foreground_command()
 
-
-def remove_hover_effect(widget: tk.Widget):
-    widget.unbind("<Enter>")
-    widget.unbind("<Leave>")
-
-def is_ctk_widget(widget):
-    if isinstance(widget, ctk.CTkBaseClass):
-        return True
-    else:
-        return False
-
 def add_bg_colour_hover_effect(
-    widget: tk.Widget, target_widget: tk.Widget = None, hover_colour=None, partners=()
+    widgets: Union[tk.Widget, Iterable[tk.Widget]], target_widgets: Union[tk.Widget, Iterable[tk.Widget]] = None, hover_colour=None
 ):
-    if target_widget is None:
-        target_widget = widget
     previous_colour = None
 
-    widget.bind("<Enter>", lambda event: hover_effect(True, hover_colour), add=True)
-    widget.bind("<Leave>", lambda event: hover_effect(False, hover_colour), add=True)
+    if not isinstance(widgets, Iterable):
+        widgets = [widgets]
+    if target_widgets is None:
+        target_widgets = widgets
+    elif not isinstance(target_widgets, Iterable):
+        target_widgets = [target_widgets]
+        
+    for w in widgets:
+        w.bind("<Enter>", lambda event: hover_effect(True, hover_colour, target_widgets), add=True)
+        w.bind("<Leave>", lambda event: hover_effect(False, hover_colour, target_widgets), add=True)
 
-    def hover_effect(mouse_enter, hover_colour):
+    def hover_effect(mouse_enter, hover_colour, target_widgets):
         nonlocal previous_colour
 
-        if mouse_enter:
+        for target_widget in target_widgets:
+            if mouse_enter:
 
-            if not is_ctk_widget(target_widget):
-                previous_colour = target_widget.cget("background")
+                previous_colour = target_widget.cget(tk_or_ctk_arguments(target_widget, "background"))
+
+                if hover_colour is None:
+                    hover_colour = adjust_brightness(previous_colour, 0.2)
+
+                configure_widget(target_widget, bg=hover_colour)
             else:
-                previous_colour = target_widget.cget("fg_color")
+                configure_widget(target_widget, bg=previous_colour)
 
-            if hover_colour is None:
-                hover_colour = adjust_brightness(previous_colour, 0.2)
+def remove_hover_effect(widgets: Union[tk.Widget, Iterable[tk.Widget]]):
+    if not isinstance(widgets, Iterable):
+        widgets = [widgets]
+    for w in widgets:
+        w.unbind("<Enter>")
+        w.unbind("<Leave>")
 
-            if not is_ctk_widget(target_widget):
-                target_widget.configure(bg=hover_colour)
-                for w in partners:
-                    if not is_ctk_widget(w):
-                        w.configure(bg=hover_colour)
-                    else:
-                        w.configure(fg_color=hover_colour)
-            else:
-                target_widget.configure(fg_color=hover_colour)
-                for w in partners:
-                    if not is_ctk_widget(w):
-                        w.configure(bg=hover_colour)
-                    else:
-                        w.configure(fg_color=hover_colour)
+def configure_widget(widget, **kwargs):
+    mapping = {
+        "bg": "fg_color",
+        "background": "fg_color",
+        "fg": "text_color",
+        "foreground": "text_color",
+        "font": "font",
+        "bd": "border_width",
+        "borderwidth": "border_width",
+    }
 
-        else:
-            if not is_ctk_widget(target_widget):
-                target_widget.configure(bg=previous_colour)
-                for w in partners:
-                    if not is_ctk_widget(w):
-                        w.configure(bg=previous_colour)
-                    else:
-                        w.configure(fg_color=previous_colour)
-            else:
-                target_widget.configure(fg_color=previous_colour)
-                for w in partners:
-                    if not is_ctk_widget(w):
-                        w.configure(bg=previous_colour)
-                    else:
-                        w.configure(fg_color=previous_colour)
+    if isinstance(widget, ctk.CTkBaseClass):
+        kwargs = {mapping.get(k, k): v for k, v in kwargs.items()}
 
+    widget.configure(**kwargs)
+
+def tk_or_ctk_arguments(widget, arg):
+    mapping = {
+        "bg": "fg_color",
+        "background": "fg_color",
+        "fg": "text_color",
+        "foreground": "text_color",
+        "font": "font",
+        "bd": "border_width",
+        "borderwidth": "border_width",
+    }
+
+    if isinstance(widget, ctk.CTkBaseClass):
+        arg = mapping[arg]
+        
+    return arg
 
 def set_opacity(widget: tk.Widget, value: float):
     GWL_EXSTYLE = -20
@@ -498,7 +490,6 @@ def set_opacity(widget: tk.Widget, value: float):
         windll.user32.SetLayeredWindowAttributes(widget_id, 0, opacity, LWA_ALPHA)
     else:
         windll.user32.SetLayeredWindowAttributes(widget_id, 0, 1, LWA_ALPHA)
-
 
 def set_defocus_on(
     trigger_widget: tk.Widget,
@@ -526,14 +517,12 @@ def set_defocus_on(
     focused_widget.bind("<FocusIn>", set_focus_binding)
     focused_widget.bind("<FocusOut>", remove_focus_binding)
 
-
 def make_label(master, width=None, height=None, *args, **kwargs):
     frame = tk.Frame(master, height=height, width=width)
     frame.pack_propagate(False)
     label = tk.Label(frame, *args, **kwargs)
     label.pack(fill="both", expand=1)
     return frame
-
 
 def set_bindings(sequence: str, command, *widgets):
     for widget in widgets:

@@ -360,7 +360,7 @@ class TabHandler:
 
             # ============= Add hover effect to tabs =============
             utils.add_hover_effect(
-                widget=self,
+                widgets=self,
                 target_widget=self.inner_tab,
                 rounding=0.4,
                 shape="rectangle",
@@ -598,7 +598,7 @@ class TabHandler:
                 # Apply normal hover effect to deselected tab
                 utils.remove_hover_effect(from_tab)
                 utils.add_hover_effect(
-                    widget=from_tab,
+                    widgets=from_tab,
                     target_widget=from_tab.inner_tab,
                     rounding=0.4,
                     shape="rectangle",

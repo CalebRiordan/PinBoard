@@ -72,7 +72,7 @@ class RestoreButton(ctk.CTkCanvas):
         self.draw_sqaure(self.thickness)
         self.bind("<Button-1>", self.on_click)
         utils.add_hover_effect(
-            widget=self,
+            widgets=self,
             rounding=rounding,
             shape="square",
             restore_foreground_command=lambda: self.draw_sqaure(self.thickness),
@@ -150,7 +150,7 @@ class MinimizeButton(ctk.CTkCanvas):
         self.draw_line()
         self.bind("<Button-1>", self.on_click)
         utils.add_hover_effect(
-            widget=self,
+            widgets=self,
             rounding=rounding,
             shape="square",
             restore_foreground_command=self.draw_line,

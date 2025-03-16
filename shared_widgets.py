@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from enum import Enum
+import re
 import tkinter as tk
+from tkinter import messagebox
 from colours import *
 from database_service import DatabaseService
 from models import *
@@ -47,7 +49,7 @@ class CloseButton(ctk.CTkCanvas):
         self.bind("<Button-1>", self.on_click)
         if hover_effect:
             utils.add_hover_effect(
-                widget=self,
+                widgets=self,
                 rounding=rounding,
                 shape="square",
                 restore_foreground_command=lambda: self.draw_x(colour),
@@ -145,7 +147,7 @@ class ContextMenu(tk.Frame):
         button.bind("<Button-1>", command)
         ctk_label.bind("<Button-1>", command)
 
-        utils.add_bg_colour_hover_effect(button, partners=(ctk_label, button))
+        utils.add_bg_colour_hover_effect(button, target_widgets=(ctk_label, button))
         return button
 
     def close_popup(self):
@@ -434,13 +436,13 @@ class PageWidget(BoardItemWidget):
 class OpenBoardWindow(tk.Toplevel):
     def __init__(self, parent, width, height):
 
-        print("OpenBoardWindow instantiated")
         db_service: DatabaseService = Services.get("DatabaseService")
         th = Services.get("TabHandler")
         self.parent = parent
 
         super().__init__(parent, bg=TRANSPARENT_COLOUR)
         self.geometry(f"{int(width)}x{int(height)}+500+300")
+        self.focus()
 
         # Make TopLevel widget transparent for rounded corners
         self.attributes("-transparentcolor", TRANSPARENT_COLOUR)
@@ -493,21 +495,79 @@ class OpenBoardWindow(tk.Toplevel):
         self.grip.bind("<B1-Motion>", self.move_window)
 
         # Scrollable area
-        scrollable_canvas = tk.Canvas(canvas, highlightthickness=0, bg=PRIMARY_COLOUR)
-        scrollable_canvas.pack(
-            side="top", fill="both", expand=True, padx=20, pady=(20, 30)
+        list_frame = tk.Frame(canvas, bg=PRIMARY_COLOUR)
+        list_frame.pack(side="top", fill="both", expand=True, padx=20, pady=(20, 30))
+
+        list_frame.rowconfigure(index=0, weight=1)
+        list_frame.columnconfigure(index=0, weight=1)
+        list_frame.columnconfigure(index=1, weight=0)
+
+        scrollable_canvas = tk.Canvas(
+            list_frame, highlightthickness=0, bg=PRIMARY_COLOUR
+        )
+        scrollable_canvas.grid(row=0, column=0, sticky="nsew")
+        items_frame = tk.Frame(scrollable_canvas, bg=PRIMARY_COLOUR)
+        scrollable_canvas.update_idletasks()
+        scrollable_canvas.create_window(
+            (0, 0),
+            window=items_frame,
+            anchor="nw",
+            width=scrollable_canvas.winfo_width() - 15,
         )
 
         # Get boards currently not open
         all_boards = db_service.get_board_previews()
-        unopened_boards = [board for board in all_boards if board[0] not in th.get_open_board_ids()]
+        unopened_boards = [
+            board for board in all_boards if board[0] not in th.get_open_board_ids()
+        ]
 
+        scrollbar_frame = tk.Frame(list_frame, width=15, bg=PRIMARY_COLOUR)
+        scrollbar_frame.grid(row=0, column=1, sticky="ns")
+        self.scrollbar = ctk.CTkScrollbar(
+            scrollbar_frame,
+            orientation="vertical",
+            width=15,
+            command=scrollable_canvas.yview,
+            button_color=LIGHT_BROWN,
+            button_hover_color=OLIVE_GREEN,
+            fg_color=PRIMARY_COLOUR,
+        )
+        scrollable_canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        scrollable_canvas.update_idletasks()
+        view_height = scrollable_canvas.winfo_height()
+        board_item_height = 20
+        occupied_height = 0
         for board in unopened_boards:
-            self.BoardOption(scrollable_canvas, board)
+            self.BoardOption(self, items_frame, board, board_item_height)
+            occupied_height += board_item_height
+
+        if view_height <= occupied_height:
+            self.scrollbar.pack(fill="y", expand=True, padx=0)
+
+        def update_scroll_region(event=None):
+            scrollable_canvas.configure(scrollregion=scrollable_canvas.bbox("all"))
+
+        scrollable_canvas.bind("<Configure>", update_scroll_region)
+        scrollable_canvas.update_idletasks()
+        update_scroll_region()
+        
+        def on_scroll(event):
+            scrollable_canvas.yview_scroll(-int(event.delta/120), "units")
             
+        scrollable_canvas.bind("<Enter>", lambda e: scrollable_canvas.bind_all("<MouseWheel>", on_scroll))
+        scrollable_canvas.bind("<Leave>", lambda e: scrollable_canvas.unbind_all("<MouseWheel>"))
+
     class BoardOption(ctk.CTkFrame):
-        def __init__(self, parent, board):
-            super().__init__(parent, fg_color=PRIMARY_COLOUR, border_width=0, corner_radius=2)
+        def __init__(self, toplevel, parent, board, height):
+            self.board = board
+            super().__init__(
+                parent,
+                fg_color=PRIMARY_COLOUR,
+                border_width=0,
+                corner_radius=2,
+                height=height,
+            )
             self.pack(side="top", fill="x")
 
             self.rowconfigure(index=0, weight=0)
@@ -516,21 +576,122 @@ class OpenBoardWindow(tk.Toplevel):
             self.columnconfigure(index=2, weight=0)
 
             parent.update_idletasks()
-            icon_size = int(parent.winfo_width()/20)
+            icon_size = int(parent.winfo_width() / 20)
 
-            self.label = tk.Label(self, font=utils.ctk_font(18), bg=PRIMARY_COLOUR, fg=BLACK, text=board[1])
+            self.label = tk.Label(
+                self,
+                font=utils.ctk_font(18),
+                bg=PRIMARY_COLOUR,
+                fg=BLACK,
+                text=board[1],
+            )
             self.label.grid(row=0, column=0, sticky="w")
-            self.date_modified = tk.Label(self, font=utils.ctk_font(16), bg=PRIMARY_COLOUR, fg=GRAY, text=board[2].strftime("%Y/%m/%d %H:%M"))
+            self.date_modified = tk.Label(
+                self,
+                font=utils.ctk_font(16),
+                bg=PRIMARY_COLOUR,
+                fg=GRAY,
+                text=board[2].strftime("%Y/%m/%d %H:%M"),
+            )
             self.date_modified.grid(row=0, column=1, sticky="e")
-            self.tk_image = utils.resize_image(PILImage.open("assets/icons/kebab.png"), icon_size)
-            self.icon_canvas = tk.Canvas(self, width=icon_size, height=icon_size*2, bg=PRIMARY_COLOUR, highlightthickness=0)
-            self.icon_canvas.create_image(icon_size/2, icon_size, image=self.tk_image, anchor="center")
+            self.tk_image = utils.resize_image(
+                PILImage.open("assets/icons/kebab.png"), icon_size
+            )
+            self.icon_canvas = tk.Canvas(
+                self,
+                width=icon_size,
+                height=icon_size * 2,
+                bg=PRIMARY_COLOUR,
+                highlightthickness=0,
+            )
             self.icon_canvas.grid(row=0, column=2)
-            
-            utils.add_bg_colour_hover_effect(self.icon_canvas)
-            utils.add_bg_colour_hover_effect(self, partners=(self.label, self.date_modified, self.icon_canvas))
-            utils.add_bg_colour_hover_effect(self.label, partners=(self, self.date_modified, self.icon_canvas))
-            utils.add_bg_colour_hover_effect(self.date_modified, partners=(self.label, self, self.icon_canvas))
+
+            board_open_widgets = (
+                self,
+                self.label,
+                self.date_modified,
+                self.icon_canvas,
+            )
+            utils.add_bg_colour_hover_effect(
+                widgets=board_open_widgets, target_widgets=board_open_widgets
+            )
+            utils.add_hover_commands(
+                board_open_widgets,
+                (
+                    lambda: self.icon_canvas.create_image(
+                        icon_size / 2,
+                        icon_size,
+                        image=self.tk_image,
+                        anchor="center",
+                        tags="img",
+                    )
+                ),
+                (lambda: self.icon_canvas.delete("img")),
+            )
+
+            # ============= Renaming feature =============
+            self.entry = ctk.CTkEntry(
+                self,
+                width=200,
+                fg_color=utils.adjust_brightness(PRIMARY_COLOUR, -0.2),
+                border_width=0,
+                corner_radius=8,
+                font=utils.ctk_font(18),
+            )
+
+            self.title = board[1]
+            self.label.bind("<Double-1>", self.start_rename)
+            self.entry.bind("<Return>", lambda event: self.process_rename(event))
+            self.entry.bind("<Escape>", self.end_rename)
+            utils.set_defocus_on(
+                toplevel,
+                self.entry,
+                [self.entry],
+                lambda: self.process_rename(),
+            )
+
+        def start_rename(self, event=None):
+            self.entry.delete(0, "end")
+            self.entry.insert(0, self.title)
+            self.label.grid_forget()
+            self.entry.grid(row=0, column=0, sticky="w", padx=(2, 0), pady=(1, 0))
+            self.entry.focus()
+            self.entry.select_range(0, "end")
+
+        def process_rename(self, event=None):
+            if not self.entry.winfo_exists():
+                return
+
+            self.title = self.entry.get().strip()
+            if self.title != "":
+                if re.match(r"^[a-zA-Z0-9_ ]+$", self.title):
+                    if re.search(r"[a-zA-Z].*[a-zA-Z].*[a-zA-Z]", self.title):
+                        self.label.configure(text=self.title)
+                        # TODO: Asynchronously save new name to database
+                    else:
+                        messagebox.showerror(
+                            "Invalid Name",
+                            "Please ensure your board name contains at least 3 letters. Numbers and underscores '_' are optional.",
+                        )
+                        self.entry.focus()
+                        return
+                else:
+                    messagebox.showerror(
+                        "Invalid Name",
+                        "Please do not use special characters in your board name.",
+                    )
+                    self.entry.focus()
+                    return
+            else:
+                self.end_rename()
+                return
+
+            self.end_rename()
+
+        def end_rename(self, event=None):
+            self.entry.grid_forget()
+            self.label.grid(row=0, column=0, sticky="w")
+            self.focus()
 
     def move_window(self, e):
         x = e.x_root - self.rel_x
@@ -574,10 +735,10 @@ class RoundedBorderCanvas(tk.Canvas):
         self.rounding = rounding
         self.bg_colour = bg_colour
         self.border_colour = border_colour
-        
+
         self.update_idletasks()
 
-    def draw_border(self, bg_colour = None):
+    def draw_border(self, bg_colour=None):
         self.delete("all")
         bg_colour = bg_colour or self.bg_colour
         utils.rounded_rectangle(
@@ -1025,9 +1186,10 @@ class MainSidePanelFrame(tk.Frame):
             # Open Board - Events
             self.set_redraw_on_hover(self.open_board_button, self.open_board_image, 14)
             utils.add_bg_colour_hover_effect(self.open_board_button, open_board_label)
+            self.open_board_window = None
             utils.set_bindings(
                 "<1>",
-                lambda event: OpenBoardWindow(self, app_width * 0.3, app_height * 0.6),
+                lambda event: self.open_board_selection(app_width, app_height),
                 self.open_board_button,
                 open_board_label,
             )
@@ -1135,6 +1297,13 @@ class MainSidePanelFrame(tk.Frame):
             button.draw_border()
             if image:
                 button.create_image(x, y, image=image, anchor=tk.CENTER)
+
+        def open_board_selection(self, width, height):
+            if self.open_board_window == None:
+                self.open_board_window = OpenBoardWindow(self, width * 0.4, height * 0.5)
+            else:
+                self.open_board_window.lift()
+                self.open_board_window.focus()
 
         def show(self, board=None):
             if board is not None:
@@ -1261,7 +1430,7 @@ class MainSidePanelFrame(tk.Frame):
 
                 # Hover effect
                 utils.add_hover_effect(
-                    widget=self,
+                    widgets=self,
                     shape="rectangle",
                     rounding=0.5,
                     partners=(label, self.image_frame),

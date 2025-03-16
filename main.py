@@ -5,7 +5,7 @@ from widgets import (
     RestoreButton,
     MinimizeButton,
 )
-from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame, OpenBoardWindow
+from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
 from components import TabHandler, BoardHandler
 from colours import *
 from window_manager import WindowManager
