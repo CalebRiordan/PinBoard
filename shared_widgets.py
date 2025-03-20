@@ -434,14 +434,14 @@ class PageWidget(BoardItemWidget):
 
 
 class OpenBoardWindow(tk.Toplevel):
-    def __init__(self, parent, width, height):
+    def __init__(self, parent, x, y, width, height):
 
         db_service: DatabaseService = Services.get("DatabaseService")
         th = Services.get("TabHandler")
         self.parent = parent
 
         super().__init__(parent, bg=TRANSPARENT_COLOUR)
-        self.geometry(f"{int(width)}x{int(height)}+500+300")
+        self.geometry(f"{int(width)}x{int(height)}+{x}+{y}")
         self.focus()
 
         # Make TopLevel widget transparent for rounded corners
@@ -1186,10 +1186,9 @@ class MainSidePanelFrame(tk.Frame):
             # Open Board - Events
             self.set_redraw_on_hover(self.open_board_button, self.open_board_image, 14)
             utils.add_bg_colour_hover_effect(self.open_board_button, open_board_label)
-            self.open_board_window = None
             utils.set_bindings(
                 "<1>",
-                lambda event: self.open_board_selection(app_width, app_height),
+                lambda e: OpenBoardWindow(self, e.x_root, e.y_root, app_width * 0.4, app_height * 0.5),
                 self.open_board_button,
                 open_board_label,
             )
@@ -1297,13 +1296,6 @@ class MainSidePanelFrame(tk.Frame):
             button.draw_border()
             if image:
                 button.create_image(x, y, image=image, anchor=tk.CENTER)
-
-        def open_board_selection(self, width, height):
-            if self.open_board_window == None:
-                self.open_board_window = OpenBoardWindow(self, width * 0.4, height * 0.5)
-            else:
-                self.open_board_window.lift()
-                self.open_board_window.focus()
 
         def show(self, board=None):
             if board is not None:

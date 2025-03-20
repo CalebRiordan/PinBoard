@@ -83,7 +83,7 @@ class BoardHandler:
             self._current_board = self._open_boards[id]
             self.current_canvas().open()
             self.set_side_panel_context()
-            self.current_canvas().bind("<1>", self.set_side_panel_context)
+            self.current_canvas().bind("<1>", self.set_side_panel_context, add=True)
         else:
             raise ValueError(
                 f"Board with id '{id}' not found amongst currently open boards"

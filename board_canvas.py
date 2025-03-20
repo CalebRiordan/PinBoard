@@ -7,7 +7,6 @@ from shared_widgets import *
 from utilities import resize_image, _draw_image_test
 from dataclasses import dataclass
 import models
-
 """
 The board_canvas file and BoardCanvas (BC) class is responsible for the canvas UI component AND its board items
 This includes pannning, zooming, scrolling, dragging, resizing, and maintaining the canvas boundaries or edges
@@ -92,14 +91,6 @@ class BoardCanvas(tk.Canvas):
         self.right_anchor = self.width * 2.5
         self.bottom_anchor = self.height * 2.5
 
-        self.bind("<1>", self.start_pan)
-        self.bind("<B1-Motion>", self.pan)
-        self.bind("<ButtonRelease>", self.reset_pan)
-
-    def _test_zoom(self):
-        for i in range(5):
-            self.zoom(-1, (1, 1))
-
     def add_board_item(self, item: BoardItem):
         item_widget = self.item_model_to_widget(item)
         self.board_items.append(item_widget)
@@ -125,10 +116,19 @@ class BoardCanvas(tk.Canvas):
         self._redraw_canvas()
 
     def set_bindings(self):
-        self.bind("<MouseWheel>", self.wheel)
-        self.bind("<Configure>", self.resize_canvas)
+        # Zoom
+        self.bind("<MouseWheel>", self.wheel, add=True)
+        
+        # App resize
+        self.bind("<Configure>", self.resize_canvas, add=True)
+        
+        # Pan
+        self.bind("<1>", self.start_pan, add=True)
+        self.bind("<B1-Motion>", self.pan, add=True)
+        self.bind("<ButtonRelease>", self.reset_pan, add=True)
 
     def wheel(self, event: tk.Event):
+        print(self.bind("<1>"))
         self.zoom(event.delta / 120, (int(event.x), int(event.y)))
 
     def zoom(self, delta, point):
@@ -325,7 +325,6 @@ class BoardCanvas(tk.Canvas):
         item.lift()
 
         def displace_item(event: tk.Event, top, left, bottom, right):
-            print("On Motion")
             x = event.x_root
             y = event.y_root
 
@@ -336,7 +335,6 @@ class BoardCanvas(tk.Canvas):
                 item.prev_x = x
                 item.prev_y = y
 
-        print("Set <B1-Motion>")
         item.bind(
             "<B1-Motion>",
             lambda e, top=top, left=left, bottom=bottom, right=right: displace_item(
@@ -347,6 +345,7 @@ class BoardCanvas(tk.Canvas):
     def start_pan(self, e: tk.Event):
         self.last_x = e.x
         self.last_y = e.y
+        print(self.last_x, self.last_y)
         self.last_update_time = time.time()
 
     def pan(self, e: tk.Event):

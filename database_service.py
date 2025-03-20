@@ -1,9 +1,12 @@
 from datetime import datetime
 from utilities import _create_mock_data
 import models
+import sqlite3
 
 
 class DatabaseService:
+
+    conn: sqlite3.Connection = None
 
     # temp
     _boards = None
@@ -12,11 +15,69 @@ class DatabaseService:
     _board_previews = []
 
     def __init__(self):
-        # TODO: Set connection in future?
         self._boards = _create_mock_data()
+        self.set_connection()
+        self.create_tables()
 
-    def set_connection():
-        raise ValueError("Not implemented yet")
+    def set_connection(self):
+        self.conn = sqlite3.connect("pinboard.db")
+        
+    def create_tables(self):
+        c = self.conn.cursor()
+        
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS board (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                date_created TEXT NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS board_item (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                board_id INT NOT NULL,
+                colour TEXT NOT NULL,
+                date_created TEXT NOT NULL,
+                type TEXT CHECK(type IN ('note', 'page', 'image')),
+                x_pos INTEGER NOT NULL,
+                y_pos INTEGER NOT NULL,
+                
+                CHECK(length(color) = 7)
+                FOREIGN KEY (board_id) REFERENCES board(id)
+            );
+            
+            CREATE TABLE IF NOT EXISTS tag (
+                id INTEGER PRIMARY KEY AUTO INCREMENT,
+                item_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                
+                FOREIGN KEY (item_id) REFERENCES board_item(id)
+            );
+            
+            CREATE TABLE IF NOT EXISTS Note (
+                id INTEGER PRIMARY KEY,
+                content TEXT NOT NULL,
+                
+                FOREIGN KEY (id) REFERENCES board_item(id)
+            )
+            
+            CREATE TABLE IF NOT EXISTS Page (
+                id INTEGER PRIMARY KEY,
+                content TEXT NOT NULL,
+                
+                FOREIGN KEY (id) REFERENCES board_item(id)
+            )
+            
+            CREATE TABLE IF NOT EXISTS Image (
+                id INTEGER PRIMARY KEY,
+                image BLOB NOT NULL,
+                
+                FOREIGN KEY (id) REFERENCES board_item(id)
+            )
+        """)
+
+        self.conn.commit()
+        self.conn.close()
 
     def get_all_board_ids(self):
         pass
