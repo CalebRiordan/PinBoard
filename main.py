@@ -1,4 +1,7 @@
+import sqlite3
 import tkinter as tk
+from tkinter import messagebox
+from mock_data import _reset_db
 from widgets import (
     TabsAndBoard,
     BoardArea,
@@ -10,7 +13,6 @@ from components import TabHandler, BoardHandler
 from colours import *
 from window_manager import WindowManager
 from PIL import Image, ImageTk
-from utilities import get_display_size, update_setting
 from service_locator import Services
 from database_service import DatabaseService
 
@@ -21,18 +23,28 @@ class App(tk.Tk):
         super().__init__()
 
         # ======== Create and Register Global Services ==========
-        
+
         # Window Manager
         self.wm = WindowManager(self, title)
         self.after(10, self.wm.set_resize_grips)
         Services.register("WindowManager", self.wm)
-        
+
         # Context Menu
         context_menu = ContextMenu(self.wm.root)
         Services.register("ContextMenu", context_menu)
-        
+
         # Database Service
         database_service = DatabaseService()
+        database_service.set_connection("pinboard")
+        try:
+            database_service.create_tables()
+        except sqlite3.OperationalError as e:
+            print(e)
+            messagebox.showerror(
+                "Database Error",
+                "Database failed to load. Please contact the developer.",
+            )
+            self.wm.close()
         Services.register("DatabaseService", database_service)
 
         # Title bar
@@ -50,7 +62,6 @@ class App(tk.Tk):
         tabs_and_board = TabsAndBoard(working_area)
         board_area = BoardArea(tabs_and_board)
 
-        
         # Tab Handler and Board Handler
         bh = BoardHandler(board_area, side_panel)
         th = TabHandler(self, bh)
@@ -64,7 +75,7 @@ class App(tk.Tk):
     def save_and_close(self):
         # perform logic such as saving unsaved boards
         self.wm.close()
-        
+
     def custom_title_bar(self, window: tk.Tk):
         window.overrideredirect(1)
         title_bar = tk.Frame(self, bg=PRIMARY_COLOUR, height=45)
@@ -73,14 +84,36 @@ class App(tk.Tk):
 
         # Buttons
         close_app_button = CloseButton(
-            title_bar, 30, 15, window.save_and_close, colour=OFF_WHITE, thickness=4, rounding=0.3
+            title_bar,
+            30,
+            15,
+            window.save_and_close,
+            colour=OFF_WHITE,
+            thickness=4,
+            rounding=0.3,
         )
         close_app_button.pack(side="right", padx=(0, 5))
 
-        restore_app_button = RestoreButton(title_bar, 30, 15, self.wm.maximize, colour=OFF_WHITE, thickness=4, rounding=0.3)
+        restore_app_button = RestoreButton(
+            title_bar,
+            30,
+            15,
+            self.wm.maximize,
+            colour=OFF_WHITE,
+            thickness=4,
+            rounding=0.3,
+        )
         restore_app_button.pack(side="right", padx=(0, 5))
 
-        minimize_app_button = MinimizeButton(title_bar, 30, 15, self.wm.minimize, colour=OFF_WHITE, thickness=4, rounding=0.3)
+        minimize_app_button = MinimizeButton(
+            title_bar,
+            30,
+            15,
+            self.wm.minimize,
+            colour=OFF_WHITE,
+            thickness=4,
+            rounding=0.3,
+        )
         minimize_app_button.pack(side="right", padx=(0, 5))
 
         # Create and pack logo in title bar
@@ -89,10 +122,23 @@ class App(tk.Tk):
         factor = img_width / 26
         img = img.resize((26, int(img.height / factor)))
         self.logo = ImageTk.PhotoImage(img)
-        pinboard_icon = tk.Canvas(title_bar, width=36, height=36, bg=PRIMARY_COLOUR, highlightthickness=0)
+        pinboard_icon = tk.Canvas(
+            title_bar, width=36, height=36, bg=PRIMARY_COLOUR, highlightthickness=0
+        )
         pinboard_icon.create_image(15, 18, image=window.logo)
         pinboard_icon.pack(side="left", padx=(15, 0))
-        
+
+        # TODO: REMOVE WHEN PUSHED TO PRODUCTION
+        tk.Button(
+            title_bar,
+            bg=LIGHT_BROWN,
+            text="Reset DB",
+            font=("", 16),
+            highlightthickness=5,
+            highlightcolor=BORDER_COLOUR,
+            command=lambda: _reset_db(Services.get("DatabaseService").conn),
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
         return title_bar
 
 

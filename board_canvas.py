@@ -128,7 +128,6 @@ class BoardCanvas(tk.Canvas):
         self.bind("<ButtonRelease>", self.reset_pan, add=True)
 
     def wheel(self, event: tk.Event):
-        print(self.bind("<1>"))
         self.zoom(event.delta / 120, (int(event.x), int(event.y)))
 
     def zoom(self, delta, point):
@@ -345,7 +344,6 @@ class BoardCanvas(tk.Canvas):
     def start_pan(self, e: tk.Event):
         self.last_x = e.x
         self.last_y = e.y
-        print(self.last_x, self.last_y)
         self.last_update_time = time.time()
 
     def pan(self, e: tk.Event):

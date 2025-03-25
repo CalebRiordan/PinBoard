@@ -516,7 +516,7 @@ class OpenBoardWindow(tk.Toplevel):
         )
 
         # Get boards currently not open
-        all_boards = db_service.get_board_previews()
+        all_boards = db_service.get_boards()
         unopened_boards = [
             board for board in all_boards if board[0] not in th.get_open_board_ids()
         ]

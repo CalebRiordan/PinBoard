@@ -1,2 +1,5 @@
 __pycache__/
+mock_images/
+mock_data.py
+pinboard.db
 test.py

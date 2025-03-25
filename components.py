@@ -435,13 +435,13 @@ class TabHandler:
             self.title = self.entry.get().strip()
             if self.title != "":
                 if re.match(r"^[a-zA-Z0-9_ ]+$", self.title):
-                    if re.search(r"[a-zA-Z].*[a-zA-Z].*[a-zA-Z]", self.title):
+                    if len(self.title) >= 2:
                         self.label.configure(text=self.title)
                         self.tooltip = self.create_tooltip(self.title)
                     else:
                         messagebox.showerror(
                             "Invalid Name",
-                            "Please ensure your board name contains at least 3 letters. Numbers and underscores '_' are optional.",
+                            "Please ensure your board name contains at least 2 characters",
                         )
                         self.entry.focus()
                         return
