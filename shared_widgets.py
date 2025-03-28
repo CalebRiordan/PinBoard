@@ -639,7 +639,7 @@ class OpenBoardWindow(tk.Toplevel):
                 font=utils.ctk_font(18),
             )
 
-            self.title = board[1]
+            self.name = board[1]
             self.label.bind("<Double-1>", self.start_rename)
             self.entry.bind("<Return>", lambda event: self.process_rename(event))
             self.entry.bind("<Escape>", self.end_rename)
@@ -652,7 +652,7 @@ class OpenBoardWindow(tk.Toplevel):
 
         def start_rename(self, event=None):
             self.entry.delete(0, "end")
-            self.entry.insert(0, self.title)
+            self.entry.insert(0, self.name)
             self.label.grid_forget()
             self.entry.grid(row=0, column=0, sticky="w", padx=(2, 0), pady=(1, 0))
             self.entry.focus()
@@ -662,11 +662,11 @@ class OpenBoardWindow(tk.Toplevel):
             if not self.entry.winfo_exists():
                 return
 
-            self.title = self.entry.get().strip()
-            if self.title != "":
-                if re.match(r"^[a-zA-Z0-9_ ]+$", self.title):
-                    if re.search(r"[a-zA-Z].*[a-zA-Z].*[a-zA-Z]", self.title):
-                        self.label.configure(text=self.title)
+            self.name = self.entry.get().strip()
+            if self.name != "":
+                if re.match(r"^[a-zA-Z0-9_ ]+$", self.name):
+                    if re.search(r"[a-zA-Z].*[a-zA-Z].*[a-zA-Z]", self.name):
+                        self.label.configure(text=self.name)
                         # TODO: Asynchronously save new name to database
                     else:
                         messagebox.showerror(

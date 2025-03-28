@@ -128,11 +128,11 @@ def _create_mock_data():
 
     # Create boards with associated items
     all_boards = [
-        Board(1, "First Board Long Name", date(2020, 5, 2), True, board_1_items),
-        Board(2, "Second Board", date(2024, 3, 21), False, board_2_items),
-        Board(3, "Third Board", date(2023, 1, 2), False, board_3_items),
+        Board(1, "First Board Long Name", date(2020, 5, 2), board_1_items),
+        Board(2, "Second Board", date(2024, 3, 21), board_2_items),
+        Board(3, "Third Board", date(2023, 1, 2), board_3_items),
         Board(
-            4, "Fourth Board", date(2024, 10, 9), True, []
+            4, "Fourth Board", date(2024, 10, 9), []
         ),  # No items for this board
     ]
 

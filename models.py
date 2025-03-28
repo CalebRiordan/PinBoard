@@ -3,11 +3,10 @@ from utilities import bytes_to_image, get_display_size, random_colour
 from colours import *
 
 class Board():
-    def __init__(self, board_id, name, date_created, open: bool, board_items: list):
-        self.board_id = board_id
+    def __init__(self, id, name, date_created, board_items: list):
+        self.id = id
         self.name = name
         self.date_created = date_created
-        self.open = open
         self.board_items = board_items
         
         self.saved = True
@@ -30,19 +29,16 @@ class Note(BoardItem):
         super().__init__(item_id, title, colour, tags, date_created, x, y)
         
         self.content = content
-        self.changed = False
         
 class Page(BoardItem):
     def __init__(self, item_id, title, date_created, content, x, y, colour=WHITE, tags = []):
         super().__init__(item_id, title, colour, tags, date_created, x, y)
         
         self.content = content
-        self.changed = False
         
 class Image(BoardItem):
     def __init__(self, item_id, title, date_created, image_bytes: bytes, x, y, colour=WHITE, tags = []):
         super().__init__(item_id, title, colour, tags, date_created, x, y)
         
         self.image = bytes_to_image(image_bytes)
-        self.changed = False
         

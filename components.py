@@ -14,11 +14,7 @@ from typing import List, Dict
 import utilities as utils
 from tkinter import messagebox
 
-# Singleton class for TABS and BOARDS with related utility methods
-
-
 class BoardHandler:
-    _instance = None
     # maintain list of Board objects
     _open_boards: Dict[int, Board] = {}
     _current_board: Board = None
@@ -36,7 +32,7 @@ class BoardHandler:
     def __init__(self, canvas_parent, side_panel):
         self._canvas_parent = canvas_parent
         self.side_panel: MainSidePanelFrame = side_panel
-        self.db_service = Services.get("DatabaseService")
+        self.db_service: DatabaseService = Services.get("DatabaseService")
 
     def initialize_boards(self):
         # TODO:
@@ -48,10 +44,10 @@ class BoardHandler:
         all_boards = utils._create_mock_data()
 
         # Create sublist for boards that are OPEN
-        open_boards = [board for board in all_boards if board.open]
-        self._all_boards_ids = [board.board_id for board in all_boards]
+        open_boards = self.db_service.get_open_boards()
+        self._all_boards_ids = self.db_service.get_all_board_ids()
 
-        return open_boards
+        return open_boards or []
 
     def get_board(self, board_id):
         if board_id in self._open_boards.keys():
@@ -90,14 +86,14 @@ class BoardHandler:
             )
 
     def new_board(self):
-        new_board_id = self.generate_new_board_id()
-        new_board = Board(new_board_id, "", date.today(), True, [])
+        new_board = Board(None, "", date.today(), [])
         new_board.saved = False
-        self._open_boards[new_board_id] = new_board
-        self._open_canvases[new_board_id] = BoardCanvas(
+        new_board = self.db_service.create_board(new_board)
+        self._open_boards[new_board.id] = new_board
+        self._open_canvases[new_board.id] = BoardCanvas(
             self._canvas_parent, self.side_panel
         )
-        self._all_boards_ids.append(new_board_id)
+        self._all_boards_ids.append(new_board.id)
         return new_board
 
     def open_board(self, id: int):
@@ -122,7 +118,7 @@ class BoardHandler:
 
         if board_id == -1:
             if self._current_board != None:
-                board_id = self._current_board.board_id
+                board_id = self._current_board.id
             else:
                 raise ValueError(
                     f"No current board set - Please specify a board id for the board to close."
@@ -149,25 +145,12 @@ class BoardHandler:
             raise ValueError(f"No open board with ID {board_id} exists.")
 
     def current_canvas(self):
-        return self._open_canvases[self._current_board.board_id]
-
-    def generate_new_board_id(self):
-        for i in range(1, len(self._all_boards_ids) + 2):
-            if i not in self._all_boards_ids:
-                return i
-        raise Exception(
-            "New board ID could not be generated. All IDs within range already taken"
-        )
+        return self._open_canvases[self._current_board.id]
 
     def set_side_panel_context(self, event=None):
         self.side_panel.set_context(self.side_panel.Contexts.BOARD, self._current_board)
 
-
-# Singleton class for TABS and BOARDS with related utility methods
-
-
 class TabHandler:
-    _instance = None
     _bh = None  # Local board handler
     _tab_list: "TabHandler.TabList" = None
     window = None
@@ -550,23 +533,27 @@ class TabHandler:
     def initialize_tab_list(self):
         # Create all the tab objects and populate th.tab_list.tabs
         open_boards = self._bh.initialize_boards()
-        for board in open_boards:
-            # Create and update list of tabs
-            self.open_tab(board)
-
-        # Check if there was a tab open when app was stopped previously
-        initial_tab_id = utils.get_setting("LAST_OPEN_TAB")
-        if initial_tab_id == -1:
-            # select first tab by default
-            self.swap_tabs(self._tab_list.tabs[0])
+        if open_boards:
+            for board in open_boards:
+                # Create and update list of tabs
+                self.open_tab(board)
+            
+            # Check if there was a tab open when app was stopped previously
+            initial_tab_id = utils.get_setting("LAST_OPEN_TAB")
+            if initial_tab_id == -1:
+                # select first tab by default
+                self.swap_tabs(self._tab_list.tabs[0])
+            else:
+                # otherwise, select last-opened tab
+                tab = self.find_tab_by_id(initial_tab_id)
+                if tab != None:
+                    self.swap_tabs(tab)
         else:
-            # otherwise, select last-opened tab
-            tab = self.find_tab_by_id(initial_tab_id)
-            if tab != None:
-                self.swap_tabs(tab)
+            # Create default tab
+            self.add_new_tab
 
     def tab_from_board(self, board: Board):
-        return TabHandler.Tab(self._tab_list, board.board_id, board.name)
+        return TabHandler.Tab(self._tab_list, board.id, board.name)
 
     def swap_tabs(self, tab_to_swap_to: "Tab"):
         #  Swapping tabs involves:
@@ -654,7 +641,7 @@ class TabHandler:
     def open_tab(self, board: Board):
         tab = self.tab_from_board(board)
         if self._tab_list.AddTab(tab):
-            self._bh.open_board(board.board_id)
+            self._bh.open_board(board.id)
             return True
         return False
 
@@ -737,7 +724,6 @@ class TabHandler:
 
     def delete_board(self, tab: "Tab"):
         self.close_tab(tab)
-        # self._bh.delete_board(tab.board_id)
 
     def get_open_board_ids(self):
         return self._bh._open_boards.keys()
