@@ -35,14 +35,6 @@ class BoardHandler:
         self.db_service: DatabaseService = Services.get("DatabaseService")
 
     def initialize_boards(self):
-        # TODO:
-        #   open_boards = db_service.get_open_boards()
-        #   self._all_boards_ids = db_service.get_all_board_ids()
-
-        # TEMP
-        # Get all board IDs from database and create list of objects
-        all_boards = utils._create_mock_data()
-
         # Create sublist for boards that are OPEN
         open_boards = self.db_service.get_open_boards()
         self._all_boards_ids = self.db_service.get_all_board_ids()
@@ -88,7 +80,9 @@ class BoardHandler:
     def new_board(self):
         new_board = Board(None, "", date.today(), [])
         new_board.saved = False
-        new_board = self.db_service.create_board(new_board)
+        print(f"Board ID BEFORE db_service.create_board: {new_board.id}")
+        self.db_service.create_board(new_board)
+        print(f"Board ID AFTER db_service.create_board: {new_board.id}")
         self._open_boards[new_board.id] = new_board
         self._open_canvases[new_board.id] = BoardCanvas(
             self._canvas_parent, self.side_panel
@@ -550,7 +544,7 @@ class TabHandler:
                     self.swap_tabs(tab)
         else:
             # Create default tab
-            self.add_new_tab
+            self.add_new_tab()
 
     def tab_from_board(self, board: Board):
         return TabHandler.Tab(self._tab_list, board.id, board.name)

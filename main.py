@@ -38,6 +38,7 @@ class App(tk.Tk):
         database_service.set_connection("pinboard")
         try:
             database_service.create_tables()
+            _reset_db(database_service.conn)
         except sqlite3.OperationalError as e:
             print(e)
             messagebox.showerror(

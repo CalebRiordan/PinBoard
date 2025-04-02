@@ -33,7 +33,7 @@ class BoardCanvas(tk.Canvas):
 
         self.side_panel: MainSidePanelFrame = side_pannel
         self.board_items: List[BoardItemWidget] = []
-        if item_models != []:
+        if item_models:
             for model in item_models:
                 widget = self.item_model_to_widget(model)
                 self.board_items.append(widget)
