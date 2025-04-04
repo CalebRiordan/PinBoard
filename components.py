@@ -62,7 +62,6 @@ class BoardHandler:
 
         if self._current_board is not None:
             self.current_canvas().close()
-            self.current_canvas().unbind("<1>")
 
         self.show_board(board_id)
 

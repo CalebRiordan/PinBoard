@@ -126,6 +126,13 @@ class BoardCanvas(tk.Canvas):
         self.bind("<1>", self.start_pan, add=True)
         self.bind("<B1-Motion>", self.pan, add=True)
         self.bind("<ButtonRelease>", self.reset_pan, add=True)
+    
+    def remove_bindings(self):
+        self.unbind("<MouseWheel>")
+        self.unbind("<Configure>")
+        self.unbind("<1>")
+        self.unbind("<B1-Motion>")
+        self.unbind("<ButtonRelease>")
 
     def wheel(self, event: tk.Event):
         self.zoom(event.delta / 120, (int(event.x), int(event.y)))
@@ -342,6 +349,7 @@ class BoardCanvas(tk.Canvas):
         )
 
     def start_pan(self, e: tk.Event):
+        print("start pan")
         self.last_x = e.x
         self.last_y = e.y
         self.last_update_time = time.time()
@@ -349,6 +357,7 @@ class BoardCanvas(tk.Canvas):
     def pan(self, e: tk.Event):
         self.move_x = e.x - self.last_x
         self.move_y = e.y - self.last_y
+        print(f"Move x,y: {self.move_x, self.move_y}")
         current_time = time.time()
 
         if current_time - self.last_update_time > self.update_threshold:
@@ -400,11 +409,13 @@ class BoardCanvas(tk.Canvas):
             self.unbind_items()
 
     def open(self):
+        self.set_bindings()
         self.grid(row=1, column=1, sticky="nsew")
         if not self.previously_opened:
             self.initial_setup()
 
     def close(self):
+        self.remove_bindings()
         self.selected_tabs = []
         self.grid_forget()
 
