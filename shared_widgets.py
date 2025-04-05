@@ -209,7 +209,7 @@ class BoardItemWidget(tk.Frame):
         self.prev_x = 0
         self.prev_y = 0
 
-        self.font_scale = int(11 * DEVICE_SCALE_FACTOR) + 2
+        self.font_scale = int(16 * self.scale_factor)
 
         super().__init__(canvas, width=width, height=height, **kwargs)
 
@@ -220,8 +220,11 @@ class BoardItemWidget(tk.Frame):
 
         self.scale_content()
         self.configure(width=self.width, height=self.height)
-
+    
     def show(self, x=None, y=None):
+        """
+        Places widgets at (x, y) as they relate to the canvas
+        """
         if x != None:
             self.scaled_x = x
         if y != None:
@@ -231,13 +234,12 @@ class BoardItemWidget(tk.Frame):
     def hide(self):
         self.place_forget()
 
-    def displace(self, dx, dy):
-        # self.hide()
-        self.item.x += dx / self.scale_factor
-        self.item.y += dy / self.scale_factor
-        self.scaled_x += dx
-        self.scaled_y += dy
-        self.show()
+    # def displace(self, dx, dy):
+    #     self.item.x += dx / self.scale_factor
+    #     self.item.y += dy / self.scale_factor
+    #     self.scaled_x += dx
+    #     self.scaled_y += dy
+    #     self.show()
 
     def pan(self, dx, dy):
         self.scaled_x += dx
@@ -255,13 +257,27 @@ class BoardItemWidget(tk.Frame):
         self.configure(highlightcolor=BLACK, highlightbackground=BLACK)
         self.after(10, lambda: self.configure(highlightthickness=2))
 
-    @abstractmethod
-    def scale_content(self):
-        self.font_scale = int(10 * self.scale_factor) + 2
+    def set_top_grip(self):
+        self.update_idletasks()
+        self.grip = tk.Frame(self, cursor="fleur")
+        self.grip.place(relwidth=1, height=self.scale_factor*16, relx=0, rely=0)
+        utils.set_opacity(self.grip, 0)
 
-    @abstractmethod
+    def scale_content(self):
+        self.font_scale = int(14 * self.scale_factor)
+        self._scale_content()
+
     def set_colour(self, colour):
         self.item.colour = colour
+        self._set_colour(colour)
+
+    @abstractmethod
+    def _scale_content(self):
+        pass
+
+    @abstractmethod
+    def _set_colour(self, colour):
+        pass
 
 
 class NoteWidget(BoardItemWidget):
@@ -281,19 +297,19 @@ class NoteWidget(BoardItemWidget):
 
         # Set up grid
         self.rowconfigure(index=0, weight=1, uniform="note_grid")
-        self.rowconfigure(index=1, weight=2, uniform="note_grid")
+        self.rowconfigure(index=1, weight=4, uniform="note_grid")
         self.rowconfigure(index=2, weight=1, uniform="note_grid")
-        self.rowconfigure(index=3, weight=22, uniform="note_grid")
+        self.rowconfigure(index=3, weight=30, uniform="note_grid")
         self.rowconfigure(index=4, weight=1, uniform="note_grid")
         self.columnconfigure(index=0, weight=1, uniform="note_grid")
-        self.columnconfigure(index=1, weight=32, uniform="note_grid")
+        self.columnconfigure(index=1, weight=35, uniform="note_grid")
         self.columnconfigure(index=2, weight=1, uniform="note_grid")
         self.grid_propagate(False)
 
         self.title_label = tk.Label(
             self,
             bg=item.colour,
-            font=("Commons", self.font_scale + 2, "bold"),
+            font=("Commons", self.font_scale, "bold"),
             text=self.item.title,
             anchor="w",
             pady=0,
@@ -301,22 +317,22 @@ class NoteWidget(BoardItemWidget):
         self.title_label.grid(row=1, column=1, sticky="nesw", padx=0, pady=0)
 
         self.content_widget = tk.Text(
-            self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", self.font_scale)
+            self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", int(0.75 * self.font_scale))
         )
         self.content_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
         self.content_widget.insert("1.0", item.content)
         self.content_widget.configure(state="disabled")
+        
+        self.set_top_grip()
 
-    def scale_content(self):
-        super().scale_content()
-        self.title_label.config(font=("Commons", self.font_scale + 3, "bold"))
-        self.content_widget.config(font=("Dubai Medium", self.font_scale))
-
-    def set_colour(self, colour):
+    def _scale_content(self):
+        self.title_label.config(font=("Commons", self.font_scale, "bold"))
+        self.content_widget.config(font=("Dubai Medium", int(0.75 * self.font_scale)))
+        
+    def _set_colour(self, colour):
         self.configure(bg=colour)
         self.title_label.config(bg=colour)
         self.content_widget.configure(bg=colour)
-        super().set_colour(colour)
 
 
 class ImageWidget(BoardItemWidget):
@@ -360,8 +376,10 @@ class ImageWidget(BoardItemWidget):
         self.original_height = h
         self.width = w
         self.height = h
+        
+        self.set_top_grip()
 
-    def scale_content(self):
+    def _scale_content(self):
         self.img = utils.resize_image(
             self.item.image, int(self.largest_dimension * self.scale_factor)
         )
@@ -373,9 +391,8 @@ class ImageWidget(BoardItemWidget):
             w / 2, h / 2, image=self.img, anchor="center", tag="image"
         )
 
-    def set_colour(self, colour):
+    def _set_colour(self, colour):
         self.configure(bg=colour)
-        super().set_colour(colour)
 
 
 class PageWidget(BoardItemWidget):
@@ -395,19 +412,19 @@ class PageWidget(BoardItemWidget):
 
         # Set up grid
         self.rowconfigure(index=0, weight=1, uniform="page_grid")
-        self.rowconfigure(index=1, weight=2, uniform="page_grid")
+        self.rowconfigure(index=1, weight=5, uniform="page_grid")
         self.rowconfigure(index=2, weight=1, uniform="page_grid")
-        self.rowconfigure(index=3, weight=28, uniform="page_grid")
+        self.rowconfigure(index=3, weight=39, uniform="page_grid")
         self.rowconfigure(index=4, weight=1, uniform="page_grid")
         self.columnconfigure(index=0, weight=1, uniform="page_grid")
-        self.columnconfigure(index=1, weight=18, uniform="page_grid")
+        self.columnconfigure(index=1, weight=35, uniform="page_grid")
         self.columnconfigure(index=2, weight=1, uniform="page_grid")
         self.grid_propagate(False)
 
         self.title_label = tk.Label(
             self,
-            bg=item.colour,
-            font=("Commons", self.font_scale + 2, "bold"),
+            bg=WHITE,
+            font=("Commons", self.font_scale, "bold"),
             text=self.item.title,
             anchor="w",
             pady=0,
@@ -415,22 +432,22 @@ class PageWidget(BoardItemWidget):
         self.title_label.grid(row=1, column=1, sticky="nesw", padx=0, pady=0)
 
         self.content_widget = tk.Text(
-            self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", self.font_scale)
+            self, bg=WHITE, relief=tk.FLAT, font=("Dubai Medium", int(0.75 * self.font_scale))
         )
         self.content_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
         self.content_widget.insert("1.0", item.content)
         self.content_widget.configure(state="disabled")
 
-    def scale_content(self):
-        super().scale_content()
-        self.title_label.config(font=("Commons", self.font_scale + 3, "bold"))
-        self.content_widget.config(font=("Dubai Medium", self.font_scale))
+        self.set_top_grip()
 
-    def set_colour(self, colour):
+    def _scale_content(self):
+        self.title_label.config(font=("Commons", self.font_scale, "bold"))
+        self.content_widget.config(font=("Dubai Medium", int(0.75 * self.font_scale)))
+
+    def _set_colour(self, colour):
         self.configure(bg=colour)
         self.title_label.configure(bg=colour)
         self.content_widget.configure(bg=colour)
-        super().set_colour(colour)
 
 
 class OpenBoardWindow(tk.Toplevel):
@@ -706,8 +723,6 @@ class OpenBoardWindow(tk.Toplevel):
         self.parent.focus()
         return super().destroy()
 
-    # TagEditor is a reusable class that describes the UI component used to show, add, and remove tags for a board item
-
 
 class RoundedBorderCanvas(tk.Canvas):
     def __init__(
@@ -756,7 +771,7 @@ class RoundedBorderCanvas(tk.Canvas):
             bg_colour,
         )
 
-
+# TagEditor is a reusable class that describes the UI component used to show, add, and remove tags for a board item
 class TagEditor(ctk.CTkFrame):
     def __init__(self, parent, width, window):
         editor_placeholder_colour = "#63472B"

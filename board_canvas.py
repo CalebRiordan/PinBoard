@@ -7,6 +7,7 @@ from shared_widgets import *
 from utilities import resize_image, _draw_image_test
 from dataclasses import dataclass
 import models
+
 """
 The board_canvas file and BoardCanvas (BC) class is responsible for the canvas UI component AND its board items
 This includes pannning, zooming, scrolling, dragging, resizing, and maintaining the canvas boundaries or edges
@@ -118,15 +119,15 @@ class BoardCanvas(tk.Canvas):
     def set_bindings(self):
         # Zoom
         self.bind("<MouseWheel>", self.wheel, add=True)
-        
+
         # App resize
         self.bind("<Configure>", self.resize_canvas, add=True)
-        
+
         # Pan
         self.bind("<1>", self.start_pan, add=True)
         self.bind("<B1-Motion>", self.pan, add=True)
         self.bind("<ButtonRelease>", self.reset_pan, add=True)
-    
+
     def remove_bindings(self):
         self.unbind("<MouseWheel>")
         self.unbind("<Configure>")
@@ -238,7 +239,7 @@ class BoardCanvas(tk.Canvas):
             x = self.zoom_point.x + new_dx
             y = self.zoom_point.y + new_dy
 
-            # Scale before using calculating top-left co-ordinates
+            # Scale before calculating top-left co-ordinates
             item.scale(self.zoom_scale)
             x = x - item.width / 2 + self.adj_x
             y = y - item.height / 2 + self.adj_y
@@ -306,12 +307,12 @@ class BoardCanvas(tk.Canvas):
                 if item in self.selected_items:
                     self.selected_tabs.append(item)
 
-            item.bind(
-                "<1>", lambda event, item=item: self.set_drag_binding(event, item)
-            )
-            item.bind(
-                "<ButtonRelease>", lambda event, item=item: item.unbind("<B1-Motion>")
-            )
+            def update_scaled_coords(x, y):
+                item.scaled_x = x
+                item.scaled_y = y
+                print(f"Updated coords: {item.scaled_x, item.scaled_y}")
+            utils.set_grip(item, item, update_scaled_coords)
+            utils.set_grip(item, item.grip, update_scaled_coords)
             children = item.winfo_children()
             utils.set_bindings("<1>", item_on_click, item, *children)
             utils.set_bindings("<Shift-1>", item_on_shift_click, item, *children)
@@ -321,35 +322,7 @@ class BoardCanvas(tk.Canvas):
             item.unbind("<1>")
             item.unbind("<ButtonRelease>")
 
-    def set_drag_binding(self, event: tk.Event, item: BoardItemWidget):
-        item.prev_x = event.x_root
-        item.prev_y = event.y_root
-        left = self.winfo_rootx()
-        top = self.winfo_rooty()
-        bottom = top + self.winfo_height()
-        right = left + self.winfo_width()
-        item.lift()
-
-        def displace_item(event: tk.Event, top, left, bottom, right):
-            x = event.x_root
-            y = event.y_root
-
-            if x > left and x < right and y > top and y < bottom:
-                dx = x - item.prev_x
-                dy = y - item.prev_y
-                item.displace(dx, dy)
-                item.prev_x = x
-                item.prev_y = y
-
-        item.bind(
-            "<B1-Motion>",
-            lambda e, top=top, left=left, bottom=bottom, right=right: displace_item(
-                e, top, left, bottom, right
-            ),
-        )
-
     def start_pan(self, e: tk.Event):
-        print("start pan")
         self.last_x = e.x
         self.last_y = e.y
         self.last_update_time = time.time()
@@ -357,7 +330,6 @@ class BoardCanvas(tk.Canvas):
     def pan(self, e: tk.Event):
         self.move_x = e.x - self.last_x
         self.move_y = e.y - self.last_y
-        print(f"Move x,y: {self.move_x, self.move_y}")
         current_time = time.time()
 
         if current_time - self.last_update_time > self.update_threshold:

@@ -128,7 +128,7 @@ class DatabaseService:
 
         boards = self.get_boards()
         if boards:
-            return [board for board in boards if board.id not in open_ids] or None
+            return [board for board in boards if board.id in open_ids] or None
         return None
 
     def create_board(self, board: models.Board):

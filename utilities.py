@@ -14,8 +14,10 @@ __all__ = ["_create_mock_data"]
 with open("app_settings.json", "r") as f:
     settings = json.load(f)
 
+
 def resize_image(image: Image.Image, maximum_size: int):
     aspect_ratio = image.width / image.height
+    maximum_size = int(maximum_size)
 
     if aspect_ratio >= 1:
         # Width > Height
@@ -26,15 +28,18 @@ def resize_image(image: Image.Image, maximum_size: int):
         image_height = maximum_size
         image_width = int(image_height * aspect_ratio)
 
-    return ImageTk.PhotoImage(image.resize((image_width, image_height)))
+    return ImageTk.PhotoImage(image.resize((int(image_width), int(image_height))))
+
 
 def get_setting(setting: str, default=None):
     return settings.get(setting, default)
+
 
 def update_setting(key: str, value):
     if key in settings:
         settings[key] = value
         _write_settings_to_file()
+
 
 def new_setting(key: str, value):
     if key not in settings:
@@ -42,6 +47,7 @@ def new_setting(key: str, value):
         _write_settings_to_file()
     else:
         raise Exception(f"setting '{key}' already exists.")
+
 
 def get_display_size():
     # returns the width and height of the screen using a temporary Tk() instance
@@ -53,20 +59,24 @@ def get_display_size():
 
     return width, height
 
+
 def _write_settings_to_file():
     with open("app_settings.json", "w") as f:
         json.dump(settings, f, indent=4)
+
 
 def bytes_to_image(image_bytes):
     input_stream = BytesIO(image_bytes)
     pil_image = Image.open(input_stream)
     return pil_image
 
+
 def _create_test_image_bytes():
     img = Image.new("RGB", (100, 100), color="red")
     img_byte_arr = BytesIO()
     img.save(img_byte_arr, format="PNG")
     return img_byte_arr.getvalue()
+
 
 def random_colour():
     colours = (
@@ -84,6 +94,7 @@ def random_colour():
         STICKY_NOTE_GRAY,
     )
     return colours[random.randint(0, len(colours) - 1)]
+
 
 def _create_mock_data():
     # Use lazy importing to avoid circular import error
@@ -131,12 +142,11 @@ def _create_mock_data():
         Board(1, "First Board Long Name", date(2020, 5, 2), board_1_items),
         Board(2, "Second Board", date(2024, 3, 21), board_2_items),
         Board(3, "Third Board", date(2023, 1, 2), board_3_items),
-        Board(
-            4, "Fourth Board", date(2024, 10, 9), []
-        ),  # No items for this board
+        Board(4, "Fourth Board", date(2024, 10, 9), []),  # No items for this board
     ]
 
     return all_boards
+
 
 def _draw_image_test(canvas, x, y, cell_width, cell_height, zoom_scale):
     canvas.create_rectangle(
@@ -148,6 +158,7 @@ def _draw_image_test(canvas, x, y, cell_width, cell_height, zoom_scale):
         outline=BLACK,
         tags="tile",
     )
+
 
 def adjust_brightness(hex_colour, factor=0):
     factor /= 1.5
@@ -178,8 +189,10 @@ def adjust_brightness(hex_colour, factor=0):
     # Convert back to hex
     return "#{:02x}{:02x}{:02x}".format(*adjusted_rgb)
 
+
 def ctk_font(size: int = 16, bold: bool = False):
     return ctk.CTkFont(family="Helvetica", size=size, weight="bold" if bold else None)
+
 
 def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
     offset = (canvas.winfo_width() - shape_size) / 2
@@ -244,6 +257,7 @@ def rounded_square(canvas: tk.Canvas, shape_size, rounding=1, colour=WHITE):
         fill=colour,
         outline=colour,
     )
+
 
 def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE):
     canvas.update_idletasks()
@@ -312,10 +326,13 @@ def rounded_rectangle(canvas: tk.Canvas, width, height, rounding=1, colour=WHITE
         outline=colour,
     )
 
-def add_hover_commands(widgets: Union[tk.Widget, Iterable[tk.Widget]], enter_commands=(), leave_commands=()):
-    if not isinstance(widgets, Iterable):  
+
+def add_hover_commands(
+    widgets: Union[tk.Widget, Iterable[tk.Widget]], enter_commands=(), leave_commands=()
+):
+    if not isinstance(widgets, Iterable):
         widgets = [widgets]
-    
+
     if enter_commands is None:
         enter_commands = []
     elif callable(enter_commands):
@@ -340,6 +357,7 @@ def add_hover_commands(widgets: Union[tk.Widget, Iterable[tk.Widget]], enter_com
         w.bind("<Enter>", execute_enter_commands, add=True)
         w.bind("<Leave>", execute_leave_commands, add=True)
 
+
 def add_hover_effect(
     widgets: Union[tk.Widget, Iterable[tk.Widget]],
     shape: str,
@@ -360,14 +378,16 @@ def add_hover_effect(
             )
         widgets = [widgets]
     elif not target_widget:
-        raise Exception("Multiple widgets provided - please specify a target canvas widget for the hover effect")
-        
-    previous_colour = target_widget.cget(tk_or_ctk_arguments(target_widget, "background"))
-        
-    for w in widgets:
-        w.bind(
-            "<Enter>", lambda event: hover_effect(True, target_widget, hover_colour)
+        raise Exception(
+            "Multiple widgets provided - please specify a target canvas widget for the hover effect"
         )
+
+    previous_colour = target_widget.cget(
+        tk_or_ctk_arguments(target_widget, "background")
+    )
+
+    for w in widgets:
+        w.bind("<Enter>", lambda event: hover_effect(True, target_widget, hover_colour))
         w.bind(
             "<Leave>", lambda event: hover_effect(False, target_widget, hover_colour)
         )
@@ -403,8 +423,11 @@ def add_hover_effect(
             if callable(restore_foreground_command):
                 restore_foreground_command()
 
+
 def add_bg_colour_hover_effect(
-    widgets: Union[tk.Widget, Iterable[tk.Widget]], target_widgets: Union[tk.Widget, Iterable[tk.Widget]] = None, hover_colour=None
+    widgets: Union[tk.Widget, Iterable[tk.Widget]],
+    target_widgets: Union[tk.Widget, Iterable[tk.Widget]] = None,
+    hover_colour=None,
 ):
     previous_colour = None
 
@@ -414,10 +437,18 @@ def add_bg_colour_hover_effect(
         target_widgets = widgets
     elif not isinstance(target_widgets, Iterable):
         target_widgets = [target_widgets]
-        
+
     for w in widgets:
-        w.bind("<Enter>", lambda event: hover_effect(True, hover_colour, target_widgets), add=True)
-        w.bind("<Leave>", lambda event: hover_effect(False, hover_colour, target_widgets), add=True)
+        w.bind(
+            "<Enter>",
+            lambda event: hover_effect(True, hover_colour, target_widgets),
+            add=True,
+        )
+        w.bind(
+            "<Leave>",
+            lambda event: hover_effect(False, hover_colour, target_widgets),
+            add=True,
+        )
 
     def hover_effect(mouse_enter, hover_colour, target_widgets):
         nonlocal previous_colour
@@ -425,7 +456,9 @@ def add_bg_colour_hover_effect(
         for target_widget in target_widgets:
             if mouse_enter:
 
-                previous_colour = target_widget.cget(tk_or_ctk_arguments(target_widget, "background"))
+                previous_colour = target_widget.cget(
+                    tk_or_ctk_arguments(target_widget, "background")
+                )
 
                 if hover_colour is None:
                     hover_colour = adjust_brightness(previous_colour, 0.2)
@@ -434,12 +467,14 @@ def add_bg_colour_hover_effect(
             else:
                 configure_widget(target_widget, bg=previous_colour)
 
+
 def remove_hover_effect(widgets: Union[tk.Widget, Iterable[tk.Widget]]):
     if not isinstance(widgets, Iterable):
         widgets = [widgets]
     for w in widgets:
         w.unbind("<Enter>")
         w.unbind("<Leave>")
+
 
 def configure_widget(widget, **kwargs):
     mapping = {
@@ -457,6 +492,7 @@ def configure_widget(widget, **kwargs):
 
     widget.configure(**kwargs)
 
+
 def tk_or_ctk_arguments(widget, arg):
     mapping = {
         "bg": "fg_color",
@@ -470,8 +506,9 @@ def tk_or_ctk_arguments(widget, arg):
 
     if isinstance(widget, ctk.CTkBaseClass):
         arg = mapping[arg]
-        
+
     return arg
+
 
 def set_opacity(widget: tk.Widget, value: float):
     GWL_EXSTYLE = -20
@@ -490,6 +527,7 @@ def set_opacity(widget: tk.Widget, value: float):
         windll.user32.SetLayeredWindowAttributes(widget_id, 0, opacity, LWA_ALPHA)
     else:
         windll.user32.SetLayeredWindowAttributes(widget_id, 0, 1, LWA_ALPHA)
+
 
 def set_defocus_on(
     trigger_widget: tk.Widget,
@@ -517,12 +555,14 @@ def set_defocus_on(
     focused_widget.bind("<FocusIn>", set_focus_binding)
     focused_widget.bind("<FocusOut>", remove_focus_binding)
 
+
 def make_label(master, width=None, height=None, *args, **kwargs):
     frame = tk.Frame(master, height=height, width=width)
     frame.pack_propagate(False)
     label = tk.Label(frame, *args, **kwargs)
     label.pack(fill="both", expand=1)
     return frame
+
 
 def set_bindings(sequence: str, command, *widgets):
     for widget in widgets:
@@ -531,3 +571,59 @@ def set_bindings(sequence: str, command, *widgets):
                 f"*widgets argument must contain only widgets, not '{type(widget)}'"
             )
         widget.bind(sequence=sequence, func=command, add=True)
+
+
+def set_grip(widget: tk.Widget, grip: tk.Widget, on_motion_callback=None):
+    """
+    Sets a <B1-Motion> binding on the grip so that the widget moves with the grip when it is dragged
+    A callback can be specified for the <B1-Motion> event, which must expect 'x' and 'y' arguments: callback(x, y)
+    """
+
+    def set_binding(
+        event: tk.Event, widget: tk.Widget, grip: tk.Widget, parent: tk.Widget
+    ):
+        def displace(event: tk.Event, widget: tk.Widget, drag_data: dict):
+            # x, y relative to parent
+            x = event.x_root - drag_data["parent_x"]
+            y = event.y_root - drag_data["parent_y"]
+
+            if (
+                x > 0
+                and x < drag_data["parent_width"]
+                and y > 0
+                and y < drag_data["parent_height"]
+            ):
+                x = x - drag_data["x_offset"]
+                y = y - drag_data["y_offset"]
+                widget.place(x=x, y=y)
+                
+                if on_motion_callback:
+                    on_motion_callback(x, y)
+
+        drag_data = {
+            "x_offset": event.x,
+            "y_offset": event.y,
+            "parent_x": parent.winfo_rootx(),
+            "parent_y": parent.winfo_rooty(),
+            "parent_width": parent.winfo_width(),
+            "parent_height": parent.winfo_height(),
+        }
+
+        grip.bind(
+            "<B1-Motion>",
+            lambda e, w=widget, d=drag_data: displace(e, w, d),
+            add=True,
+        )
+
+    # Start listening for Motion event ONLY when widget is clicked
+    grip.bind(
+        "<1>",
+        lambda event, widget=widget, grip=grip, parent=widget.master: set_binding(
+            event, widget, grip, parent
+        ),
+        add=True,
+    )
+    # Stop listening when mouse button is released
+    grip.bind(
+        "<ButtonRelease>", lambda event, widget=widget: widget.unbind("<B1-Motion>")
+    )
