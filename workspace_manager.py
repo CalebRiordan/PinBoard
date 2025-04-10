@@ -146,11 +146,9 @@ class BoardHandler:
 class TabHandler:
     _bh = None  # Local board handler
     _tab_list: "TabHandler.TabList" = None
-    window = None
     current_tab: "TabHandler.Tab" = None
 
-    def __init__(self, window: tk.Tk, board_handler: BoardHandler):
-        self.window = window
+    def __init__(self, board_handler: BoardHandler):
         self._bh = board_handler
 
     class TabList(tk.Frame):

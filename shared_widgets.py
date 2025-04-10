@@ -12,6 +12,7 @@ import utilities as utils
 import customtkinter as ctk
 from PIL import ImageTk, Image as PILImage
 import models
+from globals import root
 
 DEVICE_SCALE_FACTOR = utils.get_setting("DEVICE_SCALE_FACTOR")
 
@@ -80,7 +81,6 @@ class CloseButton(ctk.CTkCanvas):
             fill=colour,
         )
 
-
 class ContextMenu(tk.Frame):
     # This class should be instantiated when the application is opened but the
     #   widget itself should not be shown until the "open_menu" method is called
@@ -91,9 +91,8 @@ class ContextMenu(tk.Frame):
     buttons = None
     registry: dict = {}
 
-    def __init__(self, window=None):
-        self.window = window or Services.get("WindowManager").root
-        super().__init__(self.window, width=400, bg=HIGHLIGHT_COLOUR)
+    def __init__(self):
+        super().__init__(root, width=400, bg=HIGHLIGHT_COLOUR)
         self.surface = tk.Frame(self, background=PRIMARY_COLOUR)
         self.surface.pack(fill="both", padx=(1, 1), pady=(1, 1), expand=True)
 
@@ -124,13 +123,13 @@ class ContextMenu(tk.Frame):
         for button in self.buttons:
             button.pack(side="top", fill="x", padx=(2, 2), pady=(0, 2))
 
-        x = event.x_root - self.window.winfo_x()
-        y = event.y_root - self.window.winfo_y()
+        x = event.x_root - root.winfo_x()
+        y = event.y_root - root.winfo_y()
         self.place(x=x, y=y)
         self.tkraise()
 
         # Set binding to close popup if user clicks off context menu
-        self.window.bind("<1>", lambda event: self.close_popup())
+        root.bind("<1>", lambda event: self.close_popup())
 
     def button(self, label, command):
         button = tk.Frame(self.surface, bg=PRIMARY_COLOUR)
@@ -153,7 +152,7 @@ class ContextMenu(tk.Frame):
     def close_popup(self):
         self.hide_buttons()
 
-        self.window.unbind("<1>")
+        root.unbind("<1>")
         self.place_forget()
 
     def hide_buttons(self):
@@ -161,13 +160,12 @@ class ContextMenu(tk.Frame):
             for button in self.buttons:
                 button.pack_forget()
 
-
 class SingleInputWindow:
 
     def __init__(self, width=350, height=180):
         # Create and position window
         top = tk.Toplevel(highlightthickness=4, highlightbackground=BORDER_COLOUR)
-        sc_width, sc_height = get_display_size()
+        sc_width, sc_height = utils.get_display_size()
         w_width, w_height = width, height
         x_offset = int(sc_width / 2.0 - w_width / 2.0)
         y_offset = int(sc_height / 2.0 - w_height * 2)
@@ -190,7 +188,6 @@ class SingleInputWindow:
             bg_frame, highlightbackground=BORDER_COLOUR, highlightthickness=2
         )
         # txt_input.
-
 
 class BoardItemWidget(tk.Frame):
     def __init__(self, canvas, width, height, item: BoardItem, **kwargs):
@@ -234,24 +231,19 @@ class BoardItemWidget(tk.Frame):
     def hide(self):
         self.place_forget()
 
-    # def displace(self, dx, dy):
-    #     self.item.x += dx / self.scale_factor
-    #     self.item.y += dy / self.scale_factor
-    #     self.scaled_x += dx
-    #     self.scaled_y += dy
-    #     self.show()
-
     def pan(self, dx, dy):
         self.scaled_x += dx
         self.scaled_y += dy
         self.place(x=self.scaled_x, y=self.scaled_y)
 
     def highlight(self):
+        self.update_idletasks()
         self.configure(
-            highlightcolor=HIGHLIGHT_COLOUR,
-            highlightbackground=HIGHLIGHT_COLOUR,
+            highlightcolor=DARK_GRAY,
+            highlightbackground=DARK_GRAY,
             highlightthickness=3,
         )
+        self.lift()
 
     def remove_highlight(self):
         self.configure(highlightcolor=BLACK, highlightbackground=BLACK)
@@ -278,7 +270,6 @@ class BoardItemWidget(tk.Frame):
     @abstractmethod
     def _set_colour(self, colour):
         pass
-
 
 class NoteWidget(BoardItemWidget):
 
@@ -334,67 +325,6 @@ class NoteWidget(BoardItemWidget):
         self.title_label.config(bg=colour)
         self.content_widget.configure(bg=colour)
 
-
-class ImageWidget(BoardItemWidget):
-
-    def __init__(self, canvas, item: models.Image):
-        width = 400 * DEVICE_SCALE_FACTOR
-        height = 300 * DEVICE_SCALE_FACTOR
-        super().__init__(
-            canvas,
-            width,
-            height,
-            item,
-            bg=WHITE,
-            highlightthickness=2,
-            highlightbackground=BLACK,
-        )
-
-        max_size = 800 * DEVICE_SCALE_FACTOR
-        self.img = None
-
-        # Set up grid
-        if item.image.width > max_size or item.image.height > max_size:
-            self.img = utils.resize_image(item.image, max_size)
-        else:
-            self.img = ImageTk.PhotoImage(item.image)
-
-        self.largest_dimension = max(self.img.width(), self.img.height())
-        w = int(self.img.width()) + 20 * self.scale_factor
-        h = int(self.img.height()) + 20 * self.scale_factor
-        self.configure(width=w, height=h)
-
-        self.image_canvas = tk.Canvas(
-            self, width=w, height=h, highlightthickness=0, bg=WHITE
-        )
-        self.image_canvas.pack(fill="both", expand=True)
-        self.image_canvas.create_image(
-            w / 2, h / 2, image=self.img, anchor="center", tag="image"
-        )
-
-        self.original_width = w
-        self.original_height = h
-        self.width = w
-        self.height = h
-        
-        self.set_top_grip()
-
-    def _scale_content(self):
-        self.img = utils.resize_image(
-            self.item.image, int(self.largest_dimension * self.scale_factor)
-        )
-        self.image_canvas.delete("image")
-        w = int(self.img.width()) + 20 * self.scale_factor
-        h = int(self.img.height()) + 20 * self.scale_factor
-        self.image_canvas.configure(width=w, height=h)
-        self.image_canvas.create_image(
-            w / 2, h / 2, image=self.img, anchor="center", tag="image"
-        )
-
-    def _set_colour(self, colour):
-        self.configure(bg=colour)
-
-
 class PageWidget(BoardItemWidget):
 
     def __init__(self, canvas, item: Page):
@@ -449,6 +379,67 @@ class PageWidget(BoardItemWidget):
         self.title_label.configure(bg=colour)
         self.content_widget.configure(bg=colour)
 
+class ImageWidget(BoardItemWidget):
+
+    def __init__(self, canvas, item: models.Image):
+        width = 400 * DEVICE_SCALE_FACTOR
+        height = 300 * DEVICE_SCALE_FACTOR
+        super().__init__(
+            canvas,
+            width,
+            height,
+            item,
+            bg=WHITE,
+            highlightthickness=2,
+            highlightbackground=BLACK,
+        )
+
+        max_size = 600 * DEVICE_SCALE_FACTOR
+        self.img = None
+
+        if item.image.width > max_size or item.image.height > max_size:
+            self.img = utils.resize_image(item.image, max_size)
+        else:
+            self.img = ImageTk.PhotoImage(item.image)
+
+        self.largest_dimension = max(self.img.width(), self.img.height())
+        w = int(self.img.width()) + 20 * self.scale_factor
+        h = int(self.img.height()) + 20 * self.scale_factor
+        self.configure(width=w, height=h)
+
+        self.image_canvas = tk.Canvas(
+            self, width=w, height=h, highlightthickness=0, bg=WHITE
+        )
+        self.image_canvas.pack(fill="both", expand=True)
+        self.image_canvas.create_image(
+            w / 2, h / 2, image=self.img, anchor="center", tag="image"
+        )
+
+        self.original_width = w
+        self.original_height = h
+        self.width = w
+        self.height = h
+        
+        self.set_top_grip()
+    
+    class ImageCanvas(tk.Canvas):
+        def __init__():
+            super().__init__()
+
+    def _scale_content(self):
+        self.img = utils.resize_image(
+            self.item.image, int(self.largest_dimension * self.scale_factor)
+        )
+        self.image_canvas.delete("image")
+        w = int(self.img.width()) + 20 * self.scale_factor
+        h = int(self.img.height()) + 20 * self.scale_factor
+        self.image_canvas.configure(width=w, height=h)
+        self.image_canvas.create_image(
+            w / 2, h / 2, image=self.img, anchor="center", tag="image"
+        )
+
+    def _set_colour(self, colour):
+        self.configure(bg=colour)
 
 class OpenBoardWindow(tk.Toplevel):
     def __init__(self, parent, x, y, width, height):
@@ -723,7 +714,6 @@ class OpenBoardWindow(tk.Toplevel):
         self.parent.focus()
         return super().destroy()
 
-
 class RoundedBorderCanvas(tk.Canvas):
     def __init__(
         self,
@@ -773,7 +763,7 @@ class RoundedBorderCanvas(tk.Canvas):
 
 # TagEditor is a reusable class that describes the UI component used to show, add, and remove tags for a board item
 class TagEditor(ctk.CTkFrame):
-    def __init__(self, parent, width, window):
+    def __init__(self, parent, width):
         editor_placeholder_colour = "#63472B"
         super().__init__(parent, width=width, fg_color=BROWN, corner_radius=0)
 
@@ -803,7 +793,7 @@ class TagEditor(ctk.CTkFrame):
         )
         self.entry.pack(side="top", padx=5, pady=(5, 3), fill="x")
 
-        utils.set_defocus_on(window, self.entry, [self.entry._entry])
+        utils.set_defocus_on(root, self.entry, [self.entry._entry])
         self.entry.bind("<Return>", lambda event: self.add_tag(self.entry.get()))
 
         self.canvas = tk.Canvas(
@@ -914,11 +904,16 @@ class TagEditor(ctk.CTkFrame):
 
         tag.destroy()
 
+    def clear(self):
+        for tag_widget in self.tag_widgets_list:
+            tag_widget.destroy()
+    
     def set_item(self, item: models.BoardItem):
         self.item = item
 
         self.tag_list = self.item.tags
 
+        self.clear()
         def set_tags():
             for text in self.tag_list:
                 self._add_tag_widet(text)
@@ -971,7 +966,6 @@ class TagEditor(ctk.CTkFrame):
             self.tooltip.destroy()
             return super().destroy()
 
-
 class MainSidePanelFrame(tk.Frame):
     """
     Set different side panel contexts to display sections relevant to the current context\n
@@ -988,7 +982,7 @@ class MainSidePanelFrame(tk.Frame):
         ITEM = "item"
         TAB = "tab"
 
-    def __init__(self, parent, window, width):
+    def __init__(self, parent, width):
         super().__init__(parent, bg=PRIMARY_COLOUR, width=width)
 
         self.pack(side="left", fill="y")
@@ -1003,13 +997,13 @@ class MainSidePanelFrame(tk.Frame):
         width = 0.85 * width
         height = 0.75 * width
 
-        self.search = self.Search(self, width, height, spacing, window)
+        self.search = self.Search(self, width, height, spacing)
         self.board_options = self.BoardOptions(self, width - 10, height, spacing)
         self.add_items_widgets = self.AddItemOptions(self, width, height, spacing)
         self.colour_selector = self.ColourSelector(
             self, width - 10, height * 0.45, spacing
         )
-        self.tags_editor = self.TagsSidePanel(self, width, spacing + 3, window)
+        self.tags_editor = self.TagsSidePanel(self, width, spacing + 3)
 
     def clear(self):
         for section in self.displayed_sections:
@@ -1040,6 +1034,7 @@ class MainSidePanelFrame(tk.Frame):
                         f"Context Menu: Context instance must be of type 'BoardItemWidget', not '{type(context_instance)}'"
                     )
                 self.clear()
+                self.update_idletasks()
 
                 self.search.show()
                 self.board_options.show(None)
@@ -1071,7 +1066,7 @@ class MainSidePanelFrame(tk.Frame):
 
     class Search(tk.Frame):
 
-        def __init__(self, parent, width, height, spacing, window):
+        def __init__(self, parent, width, height, spacing):
             self.width = width
             self.height = height
             self.child_widgets_height = 0.21 * self.height
@@ -1154,8 +1149,9 @@ class MainSidePanelFrame(tk.Frame):
             self.search_bar.bind(
                 "<Return>", lambda event: search_global(self.search_bar.get())
             )
-            # This ensures the placeholder can still be shown after the initial focus in on the entry
-            utils.set_defocus_on(window, self.search_bar, [self.search_bar._entry])
+            
+            # Ensure placeholder can be restored after initial focus in on entry widget
+            utils.set_defocus_on(root, self.search_bar, [self.search_bar._entry])
             self.search_bar.bind("<Key>", change_button_state)
 
         def show(self):
@@ -1632,9 +1628,9 @@ class MainSidePanelFrame(tk.Frame):
     ### ========================================= ###
 
     class TagsSidePanel(TagEditor):
-        def __init__(self, parent, width, spacing, window):
+        def __init__(self, parent, width, spacing):
             self.spacing = spacing
-            super().__init__(parent, width, window)
+            super().__init__(parent, width)
 
             self.item = None
 

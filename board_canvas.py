@@ -4,7 +4,7 @@ from typing import List
 from colours import *
 from PIL import Image as PILImage
 from shared_widgets import *
-from utilities import resize_image, _draw_image_test
+from utilities import resize_image
 from dataclasses import dataclass
 import models
 
@@ -17,7 +17,7 @@ The BC can be thought of as the View component in MVC pattern, where the BoardHa
 
 
 class BoardCanvas(tk.Canvas):
-    # Using dataclass with __slots__ for optimal attribute access time
+
     @dataclass(slots=True)
     class ZoomPoint:
         x: int
@@ -80,7 +80,7 @@ class BoardCanvas(tk.Canvas):
         # Selected tabs
         self.selected_items: set[BoardItemWidget] = set()
 
-        self.set_bindings()
+        self.bind_board()
 
     def initial_setup(self):
         self.update_idletasks()
@@ -97,26 +97,7 @@ class BoardCanvas(tk.Canvas):
         self.board_items.append(item_widget)
         item_widget.show()
 
-    def item_model_to_widget(self, item: BoardItem):
-        if isinstance(item, models.Note):
-            return NoteWidget(self, item)
-        elif isinstance(item, models.Image):
-            return ImageWidget(self, item)
-        elif isinstance(item, models.Page):
-            return PageWidget(self, item)
-        else:
-            raise ValueError(
-                f"Cannot convert item '{item} to any sort of BoardItem widget'"
-            )
-
-    def set_texture(self):
-        self.img = PILImage.open("assets/images/pinboard_background.png")
-        self.photo_image = resize_image(self.img, self.cell_width)
-        self.cell_height = self.photo_image.height()
-
-        self._redraw_canvas()
-
-    def set_bindings(self):
+    def bind_board(self):
         # Zoom
         self.bind("<MouseWheel>", self.wheel, add=True)
 
@@ -128,12 +109,59 @@ class BoardCanvas(tk.Canvas):
         self.bind("<B1-Motion>", self.pan, add=True)
         self.bind("<ButtonRelease>", self.reset_pan, add=True)
 
-    def remove_bindings(self):
+    def unbind_board(self):
         self.unbind("<MouseWheel>")
         self.unbind("<Configure>")
         self.unbind("<1>")
         self.unbind("<B1-Motion>")
         self.unbind("<ButtonRelease>")
+
+    def bind_items(self):
+        exceptions = [
+            *self.board_items,
+            *[child for item in self.board_items for child in item.winfo_children()],
+        ]
+        utils.set_defocus_on(root, self, exceptions, self.deselect_items)
+
+        for item in self.board_items:
+            def item_on_click(e, item=item):
+                self.deselect_items()
+                self.select_item(item)
+            
+            def item_on_shift_click(e, item=item):
+                if item in self.selected_items:
+                    self.deselect_item(item)
+                else:
+                    self.select_item(item)
+
+            def update_scaled_coords(item, x, y):
+                item.scaled_x = x
+                item.scaled_y = y
+
+            utils.set_grip(item, item, update_scaled_coords)
+            utils.set_grip(item, item.grip, update_scaled_coords)
+            children = item.winfo_children()
+            utils.set_bindings("<1>", item_on_click, item, *children)
+            utils.set_bindings("<Shift-1>", item_on_shift_click, item, *children)
+
+    def unbind_items(self):
+        for item in self.board_items:
+            item.unbind("<1>")
+            item.unbind("<ButtonRelease>")
+
+    def select_item(self, item: BoardItemWidget):
+        item.highlight()
+        self.selected_items.add(item)
+        self.side_panel.set_context(self.side_panel.Contexts.ITEM, item)
+
+    def deselect_item(self, item: BoardItemWidget):
+        item.remove_highlight()
+        self.selected_items.remove(item)
+
+    def deselect_items(self, except_for=None):
+        for i in self.selected_items:
+            i != except_for and i.remove_highlight()
+        self.selected_items = set(except_for or [])
 
     def wheel(self, event: tk.Event):
         self.zoom(event.delta / 120, (int(event.x), int(event.y)))
@@ -166,10 +194,6 @@ class BoardCanvas(tk.Canvas):
             self._calculate_borders()
             self.offset_and_scale_items()
             self._redraw_canvas()
-
-    def _draw_image(self, x: int, y: int):
-        self.create_image(x, y, image=self.photo_image, tags="tile")
-        # _draw_image_test(self, x, y, self.cell_width, self.cell_height, self.zoom_scale,)
 
     def _set_boundary_adjustments(self):
         x = self.zoom_point.x
@@ -229,10 +253,10 @@ class BoardCanvas(tk.Canvas):
 
     def offset_and_scale_items(self):
         for item in self.board_items:
-            # change in zoom level
+            # Get distance to centre of widget
             dx = item.scaled_x + item.width / 2 - self.zoom_point.x
             dy = item.scaled_y + item.height / 2 - self.zoom_point.y
-            # Calculate new dx and dy by first rescaling it to default size and then calculating the next dx and dy
+            # Rescale item to default size and then calculate new distance to centre
             new_dx = dx / self.last_scale * self.zoom_scale
             new_dy = dy / self.last_scale * self.zoom_scale
 
@@ -280,47 +304,22 @@ class BoardCanvas(tk.Canvas):
                 y += scaled_cell_height
             x += scaled_cell_width
 
+    def set_texture(self):
+        self.img = PILImage.open("assets/images/pinboard_background.png")
+        self.photo_image = resize_image(self.img, self.cell_width)
+        self.cell_height = self.photo_image.height()
+
+        self._redraw_canvas()
+
+    def _draw_image(self, x: int, y: int):
+        self.create_image(x, y, image=self.photo_image, tags="tile")
+
     def resize_canvas(self, _event):
         if self.img:
             self.update_idletasks()
             self.width = self.winfo_width()
             self.height = self.winfo_height()
             self._redraw_canvas()
-
-    def bind_items(self):
-        for item in self.board_items:
-
-            def item_on_click(e, item=item):
-                if not (
-                    len(self.selected_items) == 1
-                    and next(iter(self.selected_items)) == item
-                ):
-                    for i in self.selected_items:
-                        i.remove_highlight()
-                    self.update_idletasks()
-                    item.highlight()
-                    self.selected_items.clear()
-                    self.selected_items.add(item)
-                    self.side_panel.set_context(self.side_panel.Contexts.ITEM, item)
-
-            def item_on_shift_click(e, item=item):
-                if item in self.selected_items:
-                    self.selected_tabs.append(item)
-
-            def update_scaled_coords(x, y):
-                item.scaled_x = x
-                item.scaled_y = y
-                print(f"Updated coords: {item.scaled_x, item.scaled_y}")
-            utils.set_grip(item, item, update_scaled_coords)
-            utils.set_grip(item, item.grip, update_scaled_coords)
-            children = item.winfo_children()
-            utils.set_bindings("<1>", item_on_click, item, *children)
-            utils.set_bindings("<Shift-1>", item_on_shift_click, item, *children)
-
-    def unbind_items(self):
-        for item in self.board_items:
-            item.unbind("<1>")
-            item.unbind("<ButtonRelease>")
 
     def start_pan(self, e: tk.Event):
         self.last_x = e.x
@@ -381,13 +380,13 @@ class BoardCanvas(tk.Canvas):
             self.unbind_items()
 
     def open(self):
-        self.set_bindings()
+        self.bind_board()
         self.grid(row=1, column=1, sticky="nsew")
         if not self.previously_opened:
             self.initial_setup()
 
     def close(self):
-        self.remove_bindings()
+        self.unbind_board()
         self.selected_tabs = []
         self.grid_forget()
 
@@ -396,20 +395,14 @@ class BoardCanvas(tk.Canvas):
             item.destroy()
         return super().destroy()
 
-    def _show_lx_ly(self):
-        self.create_line(
-            self.zoom_point.x,
-            self.zoom_point.y,
-            self.zoom_point.x - self.lx,
-            self.zoom_point.y,
-            tags="line",
-            fill=BLUE,
-        )
-        self.create_line(
-            self.zoom_point.x,
-            self.zoom_point.y,
-            self.zoom_point.x,
-            self.zoom_point.y - self.ly,
-            tags="line",
-            fill=BLUE,
-        )
+    def item_model_to_widget(self, item: BoardItem):
+        if isinstance(item, models.Note):
+            return NoteWidget(self, item)
+        elif isinstance(item, models.Image):
+            return ImageWidget(self, item)
+        elif isinstance(item, models.Page):
+            return PageWidget(self, item)
+        else:
+            raise ValueError(
+                f"Cannot convert item '{item} to any sort of BoardItem widget'"
+            )

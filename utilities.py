@@ -1,7 +1,7 @@
 import random
 import json
 from io import BytesIO
-from typing import List, Union, Iterable
+from typing import Union, Iterable
 from PIL import Image, ImageTk
 from datetime import date
 import tkinter as tk
@@ -538,16 +538,15 @@ def set_defocus_on(
     def set_focus_binding(event):
         def remove_focus(event):
             if event.widget not in exceptions:
+                # Set focus to temporary dummy widget
                 dummy_widget = tk.Frame(trigger_widget, width=0, height=0)
-                # Set focus to something else
                 trigger_widget.focus()
                 dummy_widget.destroy()
 
                 if callable(defocus_command):
                     defocus_command()
 
-        # Binding to remove focus when clicking off the entry widget:
-        trigger_widget.bind("<1>", remove_focus)
+        trigger_widget.bind("<1>", remove_focus, add=True)
 
     def remove_focus_binding(event):
         trigger_widget.unbind("<1>")
@@ -576,7 +575,7 @@ def set_bindings(sequence: str, command, *widgets):
 def set_grip(widget: tk.Widget, grip: tk.Widget, on_motion_callback=None):
     """
     Sets a <B1-Motion> binding on the grip so that the widget moves with the grip when it is dragged
-    A callback can be specified for the <B1-Motion> event, which must expect 'x' and 'y' arguments: callback(x, y)
+    A callback can be specified for the <B1-Motion> event, which must expect 'widget', 'x' and 'y' arguments: callback(widget, x, y)
     """
 
     def set_binding(
@@ -596,9 +595,9 @@ def set_grip(widget: tk.Widget, grip: tk.Widget, on_motion_callback=None):
                 x = x - drag_data["x_offset"]
                 y = y - drag_data["y_offset"]
                 widget.place(x=x, y=y)
-                
+
                 if on_motion_callback:
-                    on_motion_callback(x, y)
+                    on_motion_callback(widget, x, y)
 
         drag_data = {
             "x_offset": event.x,

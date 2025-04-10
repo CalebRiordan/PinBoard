@@ -9,18 +9,20 @@ from widgets import (
     MinimizeButton,
 )
 from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
-from components import TabHandler, BoardHandler
+from workspace_manager import TabHandler, BoardHandler
 from colours import *
 from window_manager import WindowManager
 from PIL import Image, ImageTk
 from service_locator import Services
 from database_service import DatabaseService
+import globals
 
 
 class App(tk.Tk):
 
     def __init__(self, title):
         super().__init__()
+        globals.root = self
 
         # ======== Create and Register Global Services ==========
 
@@ -59,7 +61,7 @@ class App(tk.Tk):
         working_area.pack(fill="both", expand=True)
 
         # UI components on the working area
-        side_panel = MainSidePanelFrame(working_area, self, self.wm.width * 0.25)
+        side_panel = MainSidePanelFrame(working_area, self.wm.width * 0.25)
         tabs_and_board = TabsAndBoard(working_area)
         board_area = BoardArea(tabs_and_board)
 
@@ -77,8 +79,8 @@ class App(tk.Tk):
         # perform logic such as saving unsaved boards
         self.wm.close()
 
-    def custom_title_bar(self, window: tk.Tk):
-        window.overrideredirect(1)
+    def custom_title_bar(self):
+        self.overrideredirect(1)
         title_bar = tk.Frame(self, bg=PRIMARY_COLOUR, height=45)
         title_bar.pack(side="top", fill="x")
         title_bar.pack_propagate(False)
@@ -88,7 +90,7 @@ class App(tk.Tk):
             title_bar,
             30,
             15,
-            window.save_and_close,
+            self.save_and_close,
             colour=OFF_WHITE,
             thickness=4,
             rounding=0.3,
@@ -126,7 +128,7 @@ class App(tk.Tk):
         pinboard_icon = tk.Canvas(
             title_bar, width=36, height=36, bg=PRIMARY_COLOUR, highlightthickness=0
         )
-        pinboard_icon.create_image(15, 18, image=window.logo)
+        pinboard_icon.create_image(15, 18, image=self.logo)
         pinboard_icon.pack(side="left", padx=(15, 0))
 
         # TODO: REMOVE WHEN PUSHED TO PRODUCTION

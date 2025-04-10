@@ -137,7 +137,6 @@ class WindowManager:
             def OnMotion(event: tk.Event, mode):
                 x_pointer = event.x_root
                 y_pointer = event.y_root
-                print("OnMotion")
 
                 new_width_e = x_pointer - self.west
                 new_width_w = self.east - x_pointer

@@ -1,5 +1,4 @@
-from abc import abstractmethod
-from utilities import bytes_to_image, get_display_size, random_colour
+from utilities import bytes_to_image, random_colour
 from colours import *
 
 class Board():
