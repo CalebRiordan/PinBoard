@@ -12,7 +12,7 @@ import utilities as utils
 import customtkinter as ctk
 from PIL import ImageTk, Image as PILImage
 import models
-from globals import root
+import globals
 
 DEVICE_SCALE_FACTOR = utils.get_setting("DEVICE_SCALE_FACTOR")
 
@@ -92,7 +92,8 @@ class ContextMenu(tk.Frame):
     registry: dict = {}
 
     def __init__(self):
-        super().__init__(root, width=400, bg=HIGHLIGHT_COLOUR)
+        self.root = globals.root
+        super().__init__(self.root, width=400, bg=HIGHLIGHT_COLOUR)
         self.surface = tk.Frame(self, background=PRIMARY_COLOUR)
         self.surface.pack(fill="both", padx=(1, 1), pady=(1, 1), expand=True)
 
@@ -123,13 +124,13 @@ class ContextMenu(tk.Frame):
         for button in self.buttons:
             button.pack(side="top", fill="x", padx=(2, 2), pady=(0, 2))
 
-        x = event.x_root - root.winfo_x()
-        y = event.y_root - root.winfo_y()
+        x = event.x_root - self.root.winfo_x()
+        y = event.y_root - self.root.winfo_y()
         self.place(x=x, y=y)
         self.tkraise()
 
         # Set binding to close popup if user clicks off context menu
-        root.bind("<1>", lambda event: self.close_popup())
+        self.root.bind("<1>", lambda event: self.close_popup())
 
     def button(self, label, command):
         button = tk.Frame(self.surface, bg=PRIMARY_COLOUR)
@@ -152,7 +153,7 @@ class ContextMenu(tk.Frame):
     def close_popup(self):
         self.hide_buttons()
 
-        root.unbind("<1>")
+        self.root.unbind("<1>")
         self.place_forget()
 
     def hide_buttons(self):
@@ -241,7 +242,7 @@ class BoardItemWidget(tk.Frame):
         self.configure(
             highlightcolor=DARK_GRAY,
             highlightbackground=DARK_GRAY,
-            highlightthickness=3,
+            highlightthickness=4,
         )
         self.lift()
 
@@ -774,7 +775,7 @@ class TagEditor(ctk.CTkFrame):
         self.scrollbar_height = 15
         self.gap = self.width / 75
         self.max_space = self.width - self.gap - 10
-        self.tag_list: set[str] = None
+        self.tag_list: set[str] = set()
         self.tag_widgets_list = []
         self.space_occupied = 0
 
@@ -793,7 +794,7 @@ class TagEditor(ctk.CTkFrame):
         )
         self.entry.pack(side="top", padx=5, pady=(5, 3), fill="x")
 
-        utils.set_defocus_on(root, self.entry, [self.entry._entry])
+        utils.set_defocus_on(globals.root, self.entry, [self.entry._entry])
         self.entry.bind("<Return>", lambda event: self.add_tag(self.entry.get()))
 
         self.canvas = tk.Canvas(
@@ -846,9 +847,9 @@ class TagEditor(ctk.CTkFrame):
 
             self.item.tags.add(text)
             self.tag_list.add(text)
-            self._add_tag_widet(text)
+            self.add_tag_widget(text)
 
-    def _add_tag_widet(self, text):
+    def add_tag_widget(self, text):
         self.entry.pack_configure(pady=(5, 0))
 
         new_tag = self.Tag(self, self, self.tag_height, text)
@@ -907,16 +908,20 @@ class TagEditor(ctk.CTkFrame):
     def clear(self):
         for tag_widget in self.tag_widgets_list:
             tag_widget.destroy()
+        self.tag_widgets_list.clear()    
+        
+        self.space_occupied = 0
+        self.canvas.configure(height=5)
     
     def set_item(self, item: models.BoardItem):
         self.item = item
 
-        self.tag_list = self.item.tags
-
         self.clear()
+        self.tag_list = self.item.tags
+        
         def set_tags():
             for text in self.tag_list:
-                self._add_tag_widet(text)
+                self.add_tag_widget(text)
 
         self.after(10, set_tags)
 
@@ -1151,7 +1156,7 @@ class MainSidePanelFrame(tk.Frame):
             )
             
             # Ensure placeholder can be restored after initial focus in on entry widget
-            utils.set_defocus_on(root, self.search_bar, [self.search_bar._entry])
+            utils.set_defocus_on(globals.root, self.search_bar, [self.search_bar._entry])
             self.search_bar.bind("<Key>", change_button_state)
 
         def show(self):

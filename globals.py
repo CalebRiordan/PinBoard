@@ -1,1 +1,3 @@
-root = None
+from tkinter import Tk
+
+root: Tk = None

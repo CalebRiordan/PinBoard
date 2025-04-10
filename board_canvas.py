@@ -121,7 +121,7 @@ class BoardCanvas(tk.Canvas):
             *self.board_items,
             *[child for item in self.board_items for child in item.winfo_children()],
         ]
-        utils.set_defocus_on(root, self, exceptions, self.deselect_items)
+        utils.set_defocus_on(globals.root, self, exceptions, self.deselect_items)
 
         for item in self.board_items:
             def item_on_click(e, item=item):

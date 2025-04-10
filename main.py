@@ -32,7 +32,7 @@ class App(tk.Tk):
         Services.register("WindowManager", self.wm)
 
         # Context Menu
-        context_menu = ContextMenu(self.wm.root)
+        context_menu = ContextMenu()
         Services.register("ContextMenu", context_menu)
 
         # Database Service
@@ -52,7 +52,7 @@ class App(tk.Tk):
 
         # Title bar
         self.logo = None
-        title_bar = self.custom_title_bar(self)
+        title_bar = self.custom_title_bar()
         self.wm.set_grip(title_bar)
         self.after(100, self.wm.set_taskbar_icon)
 
@@ -67,7 +67,7 @@ class App(tk.Tk):
 
         # Tab Handler and Board Handler
         bh = BoardHandler(board_area, side_panel)
-        th = TabHandler(self, bh)
+        th = TabHandler(bh)
         Services.register("TabHandler", th)
         th.create_tab_list_on(parent=tabs_and_board)
 

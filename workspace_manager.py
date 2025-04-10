@@ -13,6 +13,7 @@ from tooltip import ToolTip
 from typing import List, Dict
 import utilities as utils
 from tkinter import messagebox
+import globals
 
 class BoardHandler:
     # maintain list of Board objects
@@ -365,7 +366,7 @@ class TabHandler:
             self.close_after_rename = False
             self.tooltip = self.create_tooltip(label_text)
             utils.set_defocus_on(
-                th.window,
+                globals.root,
                 self.entry,
                 [self.entry, self.close_button],
                 lambda: self.process_rename(th),
