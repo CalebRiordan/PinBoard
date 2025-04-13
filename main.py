@@ -8,7 +8,7 @@ from widgets import (
     RestoreButton,
     MinimizeButton,
 )
-from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
+from shared_widgets import CloseButton, ContextMenu, MainSidePanel
 from workspace_manager import TabHandler, BoardHandler
 from colours import *
 from window_manager import WindowManager
@@ -56,17 +56,18 @@ class App(tk.Tk):
         self.wm.set_grip(title_bar)
         self.after(100, self.wm.set_taskbar_icon)
 
-        # The working area describes the whole application UI underneath the title bar
+        # Working area - describes the whole application UI underneath the title bar
         working_area = tk.Frame(self)
         working_area.pack(fill="both", expand=True)
 
         # UI components on the working area
-        side_panel = MainSidePanelFrame(working_area, self.wm.width * 0.25)
+        side_panel = MainSidePanel(working_area, self.wm.width * 0.25)
+        Services.register("SidePanel", side_panel)
         tabs_and_board = TabsAndBoard(working_area)
         board_area = BoardArea(tabs_and_board)
 
         # Tab Handler and Board Handler
-        bh = BoardHandler(board_area, side_panel)
+        bh = BoardHandler(board_area)
         th = TabHandler(bh)
         Services.register("TabHandler", th)
         th.create_tab_list_on(parent=tabs_and_board)

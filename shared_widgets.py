@@ -6,6 +6,7 @@ from tkinter import messagebox
 from colours import *
 from database_service import DatabaseService
 from models import *
+from selector import Selector
 from service_locator import Services
 from tooltip import ToolTip
 import utilities as utils
@@ -190,13 +191,14 @@ class SingleInputWindow:
         )
         # txt_input.
 
-class BoardItemWidget(tk.Frame):
-    def __init__(self, canvas, width, height, item: BoardItem, **kwargs):
+class BoardItemWidget(tk.Frame, Highlightable):
+    def __init__(self, parent: tk.Widget, selector: Selector, width: int, height: int, item: BoardItem, **kwargs):
         self.original_width = width
         self.original_height = height
         self.width = width
         self.height = height
         self.item = item
+        self.selector = selector
 
         self.scale_factor = 1
         self.native_x = self.item.x * DEVICE_SCALE_FACTOR
@@ -209,7 +211,7 @@ class BoardItemWidget(tk.Frame):
 
         self.font_scale = int(16 * self.scale_factor)
 
-        super().__init__(canvas, width=width, height=height, **kwargs)
+        super().__init__(parent, width=width, height=height, **kwargs)
 
     def scale(self, factor=1.0):
         self.scale_factor = factor
@@ -231,6 +233,34 @@ class BoardItemWidget(tk.Frame):
 
     def hide(self):
         self.place_forget()
+
+    def set_bindings(self):
+        # Set Grips
+        def update_scaled_coords(_item, x, y):
+            self.scaled_x = x
+            self.scaled_y = y
+        utils.set_grip(self, self, update_scaled_coords)
+        utils.set_grip(self, self.grip, update_scaled_coords)
+        
+        # Bind Click and Shift-Click Events
+        children = self.winfo_children()
+        utils.set_bindings("<1>", self.click, self, *children)
+        utils.set_bindings("<Shift-1>", self.shift_click, self, *children)
+
+    def remove_bindings(self):
+        self.unbind("<1>")
+        self.unbind("<Shift-1>")
+
+    def click(self, _event = None):
+        self.selector.select(self)
+        sp = Services.get("SidePanel")
+        sp.set_context(sp.Contexts.ITEM, self)
+        
+    def shift_click(self, _event = None):
+        if self in self.selector.items:
+            self.selector.remove(self)
+        else:
+            self.selector.add(self)
 
     def pan(self, dx, dy):
         self.scaled_x += dx
@@ -274,11 +304,12 @@ class BoardItemWidget(tk.Frame):
 
 class NoteWidget(BoardItemWidget):
 
-    def __init__(self, canvas, item: Note):
+    def __init__(self, canvas, item: Note, selector: Selector):
         width = 280 * DEVICE_SCALE_FACTOR
         height = 280 * DEVICE_SCALE_FACTOR
         super().__init__(
             canvas,
+            selector,
             width,
             height,
             item,
@@ -328,11 +359,12 @@ class NoteWidget(BoardItemWidget):
 
 class PageWidget(BoardItemWidget):
 
-    def __init__(self, canvas, item: Page):
+    def __init__(self, canvas, item: Page, selector: Selector):
         width = 280 * DEVICE_SCALE_FACTOR
         height = 400 * DEVICE_SCALE_FACTOR
         super().__init__(
             canvas,
+            selector,
             width,
             height,
             item,
@@ -382,11 +414,12 @@ class PageWidget(BoardItemWidget):
 
 class ImageWidget(BoardItemWidget):
 
-    def __init__(self, canvas, item: models.Image):
+    def __init__(self, canvas, item: models.Image, selector: Selector):
         width = 400 * DEVICE_SCALE_FACTOR
         height = 300 * DEVICE_SCALE_FACTOR
         super().__init__(
             canvas,
+            selector,
             width,
             height,
             item,
@@ -971,7 +1004,7 @@ class TagEditor(ctk.CTkFrame):
             self.tooltip.destroy()
             return super().destroy()
 
-class MainSidePanelFrame(tk.Frame):
+class MainSidePanel(tk.Frame):
     """
     Set different side panel contexts to display sections relevant to the current context\n
     Sections:

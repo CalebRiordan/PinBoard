@@ -574,8 +574,9 @@ def set_bindings(sequence: str, command, *widgets):
 
 def set_grip(widget: tk.Widget, grip: tk.Widget, on_motion_callback=None):
     """
-    Sets a <B1-Motion> binding on the grip so that the widget moves with the grip when it is dragged
-    A callback can be specified for the <B1-Motion> event, which must expect 'widget', 'x' and 'y' arguments: callback(widget, x, y)
+    Sets a B1-Motion binding on the grip so that the widget moves with the grip when it is dragged.
+    
+    A callback can be specified for the B1-Motion event, which must expect 'widget', 'x' and 'y' arguments: callback(widget, x, y)
     """
 
     def set_binding(

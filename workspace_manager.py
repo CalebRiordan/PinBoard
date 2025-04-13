@@ -6,7 +6,7 @@ import customtkinter as ctk
 from board_canvas import BoardCanvas
 from models import *
 from service_locator import Services
-from shared_widgets import CloseButton, ContextMenu, MainSidePanelFrame
+from shared_widgets import CloseButton, ContextMenu
 from typing import List
 import tkinter as tk
 from tooltip import ToolTip
@@ -30,9 +30,8 @@ class BoardHandler:
         The steps involved in
     """
 
-    def __init__(self, canvas_parent, side_panel):
+    def __init__(self, canvas_parent):
         self._canvas_parent = canvas_parent
-        self.side_panel: MainSidePanelFrame = side_panel
         self.db_service: DatabaseService = Services.get("DatabaseService")
 
     def initialize_boards(self):
@@ -80,13 +79,9 @@ class BoardHandler:
     def new_board(self):
         new_board = Board(None, "", date.today(), [])
         new_board.saved = False
-        print(f"Board ID BEFORE db_service.create_board: {new_board.id}")
         self.db_service.create_board(new_board)
-        print(f"Board ID AFTER db_service.create_board: {new_board.id}")
         self._open_boards[new_board.id] = new_board
-        self._open_canvases[new_board.id] = BoardCanvas(
-            self._canvas_parent, self.side_panel
-        )
+        self._open_canvases[new_board.id] = BoardCanvas(self._canvas_parent)
         self._all_boards_ids.append(new_board.id)
         return new_board
 
@@ -98,9 +93,7 @@ class BoardHandler:
             board: Board = self.db_service.get_board(id)
             if board:
                 self._open_boards[id] = board
-                self._open_canvases[id] = BoardCanvas(
-                    self._canvas_parent, self.side_panel, board.board_items
-                )
+                self._open_canvases[id] = BoardCanvas(self._canvas_parent, board.board_items)
             else:
                 raise ValueError(f"Board with id '{id} does not exist'")
 
@@ -142,7 +135,8 @@ class BoardHandler:
         return self._open_canvases[self._current_board.id]
 
     def set_side_panel_context(self, event=None):
-        self.side_panel.set_context(self.side_panel.Contexts.BOARD, self._current_board)
+        sp = Services.get("SidePanel")
+        sp.set_context(sp.Contexts.BOARD, self._current_board)
 
 class TabHandler:
     _bh = None  # Local board handler
@@ -518,7 +512,6 @@ class TabHandler:
     def create_tab_list_on(self, parent):
         self._tab_list = TabHandler.TabList(parent)
         self._tab_list.pack(side="top", fill="x")
-        # self._tab_list.after(300, self.initialize_tab_list)
         self._tab_list.update_idletasks()
         self.initialize_tab_list()
 

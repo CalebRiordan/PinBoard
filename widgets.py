@@ -8,6 +8,10 @@ from enum import Enum
 class TabsAndBoard(tk.Frame):
 
     def __init__(self, parent):
+        """
+        Construct an open area reserved for the tab list (TabList) in the top strip and the
+        board area (BoardArea) in the remaining space
+        """
         super().__init__(parent, bg="purple")
 
         self.pack(side="left", fill="both", expand=True)
@@ -16,6 +20,9 @@ class TabsAndBoard(tk.Frame):
 class BoardArea(tk.Frame):
 
     def __init__(self, parent):
+        """
+        Construct a canvas with a thin brown border made of tk.Frame widgets. Used to house BoardCanvas
+        """
         super().__init__(parent, background=PRIMARY_COLOUR, highlightthickness=0)
         border_thickness = 10
 

@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from utilities import bytes_to_image, random_colour
 from colours import *
 
@@ -41,3 +42,11 @@ class Image(BoardItem):
         
         self.image = bytes_to_image(image_bytes)
         
+class Highlightable:
+    @abstractmethod
+    def highlight(self):
+        pass
+    
+    @abstractmethod
+    def remove_highlight(self):
+        pass

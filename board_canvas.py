@@ -7,6 +7,7 @@ from shared_widgets import *
 from utilities import resize_image
 from dataclasses import dataclass
 import models
+from selector import Selector
 
 """
 The board_canvas file and BoardCanvas (BC) class is responsible for the canvas UI component AND its board items
@@ -23,7 +24,7 @@ class BoardCanvas(tk.Canvas):
         x: int
         y: int
 
-    def __init__(self, parent, side_pannel, item_models=[]):
+    def __init__(self, parent, item_models=[]):
         super().__init__(parent, background=ORANGE, highlightthickness=0)
 
         self.previously_opened = False
@@ -32,8 +33,8 @@ class BoardCanvas(tk.Canvas):
         self.width = 0
         self.height = 0
 
-        self.side_panel: MainSidePanelFrame = side_pannel
         self.board_items: List[BoardItemWidget] = []
+        self.selector = Selector()
         if item_models:
             for model in item_models:
                 widget = self.item_model_to_widget(model)
@@ -76,10 +77,7 @@ class BoardCanvas(tk.Canvas):
         self.move_y = 0
         self.last_update_time = 0
         self.update_threshold = 0.016
-
-        # Selected tabs
-        self.selected_items: set[BoardItemWidget] = set()
-
+        
         self.bind_board()
 
     def initial_setup(self):
@@ -121,47 +119,14 @@ class BoardCanvas(tk.Canvas):
             *self.board_items,
             *[child for item in self.board_items for child in item.winfo_children()],
         ]
-        utils.set_defocus_on(globals.root, self, exceptions, self.deselect_items)
+        utils.set_defocus_on(globals.root, self, exceptions, self.selector.clear)
 
         for item in self.board_items:
-            def item_on_click(e, item=item):
-                self.deselect_items()
-                self.select_item(item)
+            item.set_bindings()
             
-            def item_on_shift_click(e, item=item):
-                if item in self.selected_items:
-                    self.deselect_item(item)
-                else:
-                    self.select_item(item)
-
-            def update_scaled_coords(item, x, y):
-                item.scaled_x = x
-                item.scaled_y = y
-
-            utils.set_grip(item, item, update_scaled_coords)
-            utils.set_grip(item, item.grip, update_scaled_coords)
-            children = item.winfo_children()
-            utils.set_bindings("<1>", item_on_click, item, *children)
-            utils.set_bindings("<Shift-1>", item_on_shift_click, item, *children)
-
     def unbind_items(self):
         for item in self.board_items:
-            item.unbind("<1>")
-            item.unbind("<ButtonRelease>")
-
-    def select_item(self, item: BoardItemWidget):
-        item.highlight()
-        self.selected_items.add(item)
-        self.side_panel.set_context(self.side_panel.Contexts.ITEM, item)
-
-    def deselect_item(self, item: BoardItemWidget):
-        item.remove_highlight()
-        self.selected_items.remove(item)
-
-    def deselect_items(self, except_for=None):
-        for i in self.selected_items:
-            i != except_for and i.remove_highlight()
-        self.selected_items = set(except_for or [])
+            item.remove_bindings()
 
     def wheel(self, event: tk.Event):
         self.zoom(event.delta / 120, (int(event.x), int(event.y)))
@@ -397,11 +362,11 @@ class BoardCanvas(tk.Canvas):
 
     def item_model_to_widget(self, item: BoardItem):
         if isinstance(item, models.Note):
-            return NoteWidget(self, item)
+            return NoteWidget(self, item, self.selector)
         elif isinstance(item, models.Image):
-            return ImageWidget(self, item)
+            return ImageWidget(self, item, self.selector)
         elif isinstance(item, models.Page):
-            return PageWidget(self, item)
+            return PageWidget(self, item, self.selector)
         else:
             raise ValueError(
                 f"Cannot convert item '{item} to any sort of BoardItem widget'"
