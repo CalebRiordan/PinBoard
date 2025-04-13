@@ -1,6 +1,6 @@
 from abc import abstractmethod
-from utilities import bytes_to_image, random_colour
-from colours import *
+from utils.functions import bytes_to_image, random_colour
+from utils.colours import *
 
 class Board():
     def __init__(self, id, name, date_created, board_items: list):

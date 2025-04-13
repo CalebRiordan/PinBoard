@@ -1,19 +1,20 @@
-from abc import abstractmethod
-from enum import Enum
 import re
 import tkinter as tk
-from tkinter import messagebox
-from colours import *
-from database_service import DatabaseService
-from models import *
-from selector import Selector
-from service_locator import Services
-from tooltip import ToolTip
-import utilities as utils
 import customtkinter as ctk
+from abc import abstractmethod
+from enum import Enum
 from PIL import ImageTk, Image as PILImage
-import models
-import globals
+from tkinter import messagebox
+
+import utils.functions as utils
+from utils.selector import Selector
+from utils.tooltip import ToolTip
+import app.models as models
+import services.globals as globals
+from utils.colours import *
+from services.database_service import DatabaseService
+from app.models import *
+from services.service_locator import Services
 
 DEVICE_SCALE_FACTOR = utils.get_setting("DEVICE_SCALE_FACTOR")
 
@@ -81,6 +82,7 @@ class CloseButton(ctk.CTkCanvas):
             width=self.thickness,
             fill=colour,
         )
+
 
 class ContextMenu(tk.Frame):
     # This class should be instantiated when the application is opened but the
@@ -162,6 +164,7 @@ class ContextMenu(tk.Frame):
             for button in self.buttons:
                 button.pack_forget()
 
+
 class SingleInputWindow:
 
     def __init__(self, width=350, height=180):
@@ -191,8 +194,17 @@ class SingleInputWindow:
         )
         # txt_input.
 
+
 class BoardItemWidget(tk.Frame, Highlightable):
-    def __init__(self, parent: tk.Widget, selector: Selector, width: int, height: int, item: BoardItem, **kwargs):
+    def __init__(
+        self,
+        parent: tk.Widget,
+        selector: Selector,
+        width: int,
+        height: int,
+        item: BoardItem,
+        **kwargs,
+    ):
         self.original_width = width
         self.original_height = height
         self.width = width
@@ -220,7 +232,7 @@ class BoardItemWidget(tk.Frame, Highlightable):
 
         self.scale_content()
         self.configure(width=self.width, height=self.height)
-    
+
     def show(self, x=None, y=None):
         """
         Places widgets at (x, y) as they relate to the canvas
@@ -239,9 +251,10 @@ class BoardItemWidget(tk.Frame, Highlightable):
         def update_scaled_coords(_item, x, y):
             self.scaled_x = x
             self.scaled_y = y
+
         utils.set_grip(self, self, update_scaled_coords)
         utils.set_grip(self, self.grip, update_scaled_coords)
-        
+
         # Bind Click and Shift-Click Events
         children = self.winfo_children()
         utils.set_bindings("<1>", self.click, self, *children)
@@ -251,12 +264,12 @@ class BoardItemWidget(tk.Frame, Highlightable):
         self.unbind("<1>")
         self.unbind("<Shift-1>")
 
-    def click(self, _event = None):
+    def click(self, _event=None):
         self.selector.select(self)
         sp = Services.get("SidePanel")
         sp.set_context(sp.Contexts.ITEM, self)
-        
-    def shift_click(self, _event = None):
+
+    def shift_click(self, _event=None):
         if self in self.selector.items:
             self.selector.remove(self)
         else:
@@ -283,7 +296,7 @@ class BoardItemWidget(tk.Frame, Highlightable):
     def set_top_grip(self):
         self.update_idletasks()
         self.grip = tk.Frame(self, cursor="fleur")
-        self.grip.place(relwidth=1, height=self.scale_factor*16, relx=0, rely=0)
+        self.grip.place(relwidth=1, height=self.scale_factor * 16, relx=0, rely=0)
         utils.set_opacity(self.grip, 0)
 
     def scale_content(self):
@@ -301,6 +314,7 @@ class BoardItemWidget(tk.Frame, Highlightable):
     @abstractmethod
     def _set_colour(self, colour):
         pass
+
 
 class NoteWidget(BoardItemWidget):
 
@@ -340,22 +354,26 @@ class NoteWidget(BoardItemWidget):
         self.title_label.grid(row=1, column=1, sticky="nesw", padx=0, pady=0)
 
         self.content_widget = tk.Text(
-            self, bg=item.colour, relief=tk.FLAT, font=("Dubai Medium", int(0.75 * self.font_scale))
+            self,
+            bg=item.colour,
+            relief=tk.FLAT,
+            font=("Dubai Medium", int(0.75 * self.font_scale)),
         )
         self.content_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
         self.content_widget.insert("1.0", item.content)
         self.content_widget.configure(state="disabled")
-        
+
         self.set_top_grip()
 
     def _scale_content(self):
         self.title_label.config(font=("Commons", self.font_scale, "bold"))
         self.content_widget.config(font=("Dubai Medium", int(0.75 * self.font_scale)))
-        
+
     def _set_colour(self, colour):
         self.configure(bg=colour)
         self.title_label.config(bg=colour)
         self.content_widget.configure(bg=colour)
+
 
 class PageWidget(BoardItemWidget):
 
@@ -395,7 +413,10 @@ class PageWidget(BoardItemWidget):
         self.title_label.grid(row=1, column=1, sticky="nesw", padx=0, pady=0)
 
         self.content_widget = tk.Text(
-            self, bg=WHITE, relief=tk.FLAT, font=("Dubai Medium", int(0.75 * self.font_scale))
+            self,
+            bg=WHITE,
+            relief=tk.FLAT,
+            font=("Dubai Medium", int(0.75 * self.font_scale)),
         )
         self.content_widget.grid(row=3, column=1, sticky="nesw", padx=0, pady=0)
         self.content_widget.insert("1.0", item.content)
@@ -411,6 +432,7 @@ class PageWidget(BoardItemWidget):
         self.configure(bg=colour)
         self.title_label.configure(bg=colour)
         self.content_widget.configure(bg=colour)
+
 
 class ImageWidget(BoardItemWidget):
 
@@ -453,9 +475,9 @@ class ImageWidget(BoardItemWidget):
         self.original_height = h
         self.width = w
         self.height = h
-        
+
         self.set_top_grip()
-    
+
     class ImageCanvas(tk.Canvas):
         def __init__():
             super().__init__()
@@ -474,6 +496,7 @@ class ImageWidget(BoardItemWidget):
 
     def _set_colour(self, colour):
         self.configure(bg=colour)
+
 
 class OpenBoardWindow(tk.Toplevel):
     def __init__(self, parent, x, y, width, height):
@@ -593,12 +616,16 @@ class OpenBoardWindow(tk.Toplevel):
         scrollable_canvas.bind("<Configure>", update_scroll_region)
         scrollable_canvas.update_idletasks()
         update_scroll_region()
-        
+
         def on_scroll(event):
-            scrollable_canvas.yview_scroll(-int(event.delta/120), "units")
-            
-        scrollable_canvas.bind("<Enter>", lambda e: scrollable_canvas.bind_all("<MouseWheel>", on_scroll))
-        scrollable_canvas.bind("<Leave>", lambda e: scrollable_canvas.unbind_all("<MouseWheel>"))
+            scrollable_canvas.yview_scroll(-int(event.delta / 120), "units")
+
+        scrollable_canvas.bind(
+            "<Enter>", lambda e: scrollable_canvas.bind_all("<MouseWheel>", on_scroll)
+        )
+        scrollable_canvas.bind(
+            "<Leave>", lambda e: scrollable_canvas.unbind_all("<MouseWheel>")
+        )
 
     class BoardOption(ctk.CTkFrame):
         def __init__(self, toplevel, parent, board, height):
@@ -748,6 +775,7 @@ class OpenBoardWindow(tk.Toplevel):
         self.parent.focus()
         return super().destroy()
 
+
 class RoundedBorderCanvas(tk.Canvas):
     def __init__(
         self,
@@ -795,8 +823,12 @@ class RoundedBorderCanvas(tk.Canvas):
             bg_colour,
         )
 
-# TagEditor is a reusable class that describes the UI component used to show, add, and remove tags for a board item
+
 class TagEditor(ctk.CTkFrame):
+    """
+    TagEditor is a reusable class that describes the UI component used to show, add, and remove tags for a board item
+    """
+
     def __init__(self, parent, width):
         editor_placeholder_colour = "#63472B"
         super().__init__(parent, width=width, fg_color=BROWN, corner_radius=0)
@@ -941,17 +973,17 @@ class TagEditor(ctk.CTkFrame):
     def clear(self):
         for tag_widget in self.tag_widgets_list:
             tag_widget.destroy()
-        self.tag_widgets_list.clear()    
-        
+        self.tag_widgets_list.clear()
+
         self.space_occupied = 0
         self.canvas.configure(height=5)
-    
+
     def set_item(self, item: models.BoardItem):
         self.item = item
 
         self.clear()
         self.tag_list = self.item.tags
-        
+
         def set_tags():
             for text in self.tag_list:
                 self.add_tag_widget(text)
@@ -1003,6 +1035,7 @@ class TagEditor(ctk.CTkFrame):
         def destroy(self):
             self.tooltip.destroy()
             return super().destroy()
+
 
 class MainSidePanel(tk.Frame):
     """
@@ -1187,9 +1220,11 @@ class MainSidePanel(tk.Frame):
             self.search_bar.bind(
                 "<Return>", lambda event: search_global(self.search_bar.get())
             )
-            
+
             # Ensure placeholder can be restored after initial focus in on entry widget
-            utils.set_defocus_on(globals.root, self.search_bar, [self.search_bar._entry])
+            utils.set_defocus_on(
+                globals.root, self.search_bar, [self.search_bar._entry]
+            )
             self.search_bar.bind("<Key>", change_button_state)
 
         def show(self):
@@ -1237,7 +1272,9 @@ class MainSidePanel(tk.Frame):
             utils.add_bg_colour_hover_effect(self.open_board_button, open_board_label)
             utils.set_bindings(
                 "<1>",
-                lambda e: OpenBoardWindow(self, e.x_root, e.y_root, app_width * 0.4, app_height * 0.5),
+                lambda e: OpenBoardWindow(
+                    self, e.x_root, e.y_root, app_width * 0.4, app_height * 0.5
+                ),
                 self.open_board_button,
                 open_board_label,
             )
@@ -1678,3 +1715,179 @@ class MainSidePanel(tk.Frame):
 
         def hide(self):
             self.pack_forget()
+
+
+class TabsAndBoard(tk.Frame):
+
+    def __init__(self, parent):
+        """
+        Construct an open area reserved for the tab list (TabList) in the top strip and the
+        board area (BoardArea) in the remaining space
+        """
+        super().__init__(parent, bg="purple")
+
+        self.pack(side="left", fill="both", expand=True)
+
+
+class BoardArea(tk.Frame):
+
+    def __init__(self, parent):
+        """
+        Construct a canvas with a thin brown border made of tk.Frame widgets. Used to house BoardCanvas
+        """
+        super().__init__(parent, background=PRIMARY_COLOUR, highlightthickness=0)
+        border_thickness = 10
+
+        # Set up 3x3 grid
+        self.rowconfigure(index=0, weight=0)
+        self.rowconfigure(index=1, weight=1)
+        self.rowconfigure(index=2, weight=0)
+        self.columnconfigure(index=0, weight=0)
+        self.columnconfigure(index=1, weight=1)
+        self.columnconfigure(index=2, weight=0)
+
+        # Top border
+        top_border = tk.Frame(self, bg=BORDER_COLOUR, height=border_thickness)
+        top_border.grid(row=0, column=0, columnspan=3, sticky="nsew")
+
+        bottom_border = tk.Frame(self, bg=BORDER_COLOUR, height=border_thickness)
+        bottom_border.grid(row=2, column=0, columnspan=3, sticky="nsew")
+
+        right_border = tk.Frame(self, bg=BORDER_COLOUR, width=border_thickness)
+        right_border.grid(row=1, column=0, sticky="nsew")
+
+        left_border = tk.Frame(self, bg=BORDER_COLOUR, width=border_thickness)
+        left_border.grid(row=1, column=2, sticky="nsew")
+
+        self.pack(side="bottom", fill="both", expand=True)
+
+
+class RestoreButton(ctk.CTkCanvas):
+
+    def __init__(
+        self,
+        parent,
+        button_size,
+        icon_size,
+        command,
+        colour=WHITE,
+        thickness=3,
+        rounding=1,
+    ):
+        super().__init__(
+            parent,
+            width=button_size,
+            height=button_size,
+            background=parent.cget("background"),
+            highlightthickness=0,
+        )
+
+        self.command = command
+        self.button_size = button_size
+        self.icon_size = icon_size
+        self.thickness = thickness
+        self.colour = colour
+
+        self.draw_sqaure(self.thickness)
+        self.bind("<Button-1>", self.on_click)
+        utils.add_hover_effect(
+            widgets=self,
+            rounding=rounding,
+            shape="square",
+            restore_foreground_command=lambda: self.draw_sqaure(self.thickness),
+        )
+
+    def on_click(self, _event):
+        if callable(self.command):
+            self.command()
+        else:
+            raise ValueError("Error: provided 'command' argument is not callable")
+
+    def draw_sqaure(self, th):
+        th = th / 2
+        offset = (self.button_size - self.icon_size) / 2
+        self.create_line(
+            offset - th,
+            offset,
+            self.button_size - offset + th,
+            offset,
+            width=self.thickness,
+            fill=self.colour,
+        )
+        self.create_line(
+            self.button_size - offset,
+            offset - th,
+            self.button_size - offset,
+            self.button_size - offset + th,
+            width=self.thickness,
+            fill=self.colour,
+        )
+        self.create_line(
+            self.button_size - offset + th,
+            self.button_size - offset,
+            offset - th,
+            self.button_size - offset,
+            width=self.thickness,
+            fill=self.colour,
+        )
+        self.create_line(
+            offset,
+            self.button_size - offset + th,
+            offset,
+            offset - th,
+            width=self.thickness,
+            fill=self.colour,
+        )
+
+
+class MinimizeButton(ctk.CTkCanvas):
+
+    def __init__(
+        self,
+        parent,
+        button_size,
+        icon_size,
+        command,
+        colour=WHITE,
+        thickness=3,
+        rounding=1,
+    ):
+        super().__init__(
+            parent,
+            width=button_size,
+            height=button_size,
+            background=parent.cget("background"),
+            highlightthickness=0,
+        )
+
+        self.command = command
+        self.button_size = button_size
+        self.icon_size = icon_size
+        self.thickness = thickness
+        self.colour = colour
+
+        self.draw_line()
+        self.bind("<Button-1>", self.on_click)
+        utils.add_hover_effect(
+            widgets=self,
+            rounding=rounding,
+            shape="square",
+            restore_foreground_command=self.draw_line,
+        )
+
+    def on_click(self, _event):
+        if callable(self.command):
+            self.command()
+        else:
+            raise ValueError("Error: provided 'command' argument is not callable")
+
+    def draw_line(self):
+        offset = (self.button_size - self.icon_size) / 2
+        self.create_line(
+            offset,
+            self.button_size - offset,
+            self.button_size - offset,
+            self.button_size - offset,
+            width=self.thickness,
+            fill=self.colour,
+        )

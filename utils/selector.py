@@ -1,4 +1,4 @@
-from models import Highlightable
+from app.models import Highlightable
 
 class Selector():
     items: set[Highlightable] = set()

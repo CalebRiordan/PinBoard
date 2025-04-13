@@ -1,7 +1,7 @@
 import tkinter as tk
 import ctypes
-from utilities import set_opacity, get_display_size, update_setting
-from colours import *
+from utils.functions import set_opacity, get_display_size, update_setting
+from utils.colours import *
 
 
 class WindowManager:

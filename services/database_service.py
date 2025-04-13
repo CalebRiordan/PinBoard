@@ -1,11 +1,9 @@
-from datetime import datetime
 from enum import Enum
-import os
 from typing import List
-from utilities import get_setting
-import models
+from utils.functions import get_setting
+import app.models as models
 import sqlite3
-import models
+import app.models as models
 
 
 class QueryTypes(Enum):

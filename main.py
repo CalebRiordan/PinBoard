@@ -1,21 +1,24 @@
 import sqlite3
 import tkinter as tk
 from tkinter import messagebox
-from mock_data import _reset_db
-from widgets import (
+from services.mock_data import _reset_db
+from app.widgets import (
     TabsAndBoard,
     BoardArea,
     RestoreButton,
     MinimizeButton,
+    CloseButton,
+    ContextMenu,
+    MainSidePanel,
 )
-from shared_widgets import CloseButton, ContextMenu, MainSidePanel
-from workspace_manager import TabHandler, BoardHandler
-from colours import *
-from window_manager import WindowManager
+from app.tab_handler import TabHandler
+from app.board_handler import BoardHandler
+from utils.colours import *
+from services.window_manager import WindowManager
 from PIL import Image, ImageTk
-from service_locator import Services
-from database_service import DatabaseService
-import globals
+from services.service_locator import Services
+from services.database_service import DatabaseService
+import services.globals as globals
 
 
 class App(tk.Tk):
@@ -144,7 +147,6 @@ class App(tk.Tk):
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         return title_bar
-
 
 if __name__ == "__main__":
     root = App("Pinboard")

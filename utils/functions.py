@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 from datetime import date
 import tkinter as tk
 from ctypes import windll
-from colours import *
+from utils.colours import *
 import customtkinter as ctk
 
 __all__ = ["_create_mock_data"]
@@ -98,7 +98,7 @@ def random_colour():
 
 def _create_mock_data():
     # Use lazy importing to avoid circular import error
-    from models import Board, Note, Page, Image
+    from app.models import Board, Note, Page, Image
 
     mock_image = _create_test_image_bytes
     # Create board items for Board 1

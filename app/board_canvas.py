@@ -1,13 +1,20 @@
 import time
 import tkinter as tk
 from typing import List
-from colours import *
+from utils.colours import *
 from PIL import Image as PILImage
-from shared_widgets import *
-from utilities import resize_image
+from app.widgets import (
+    BoardItemWidget,
+    BoardItem,
+    NoteWidget,
+    ImageWidget,
+    PageWidget,
+)
+from utils.functions import resize_image, set_defocus_on
 from dataclasses import dataclass
-import models
-from selector import Selector
+import app.models as models
+from utils.selector import Selector
+from services import globals
 
 """
 The board_canvas file and BoardCanvas (BC) class is responsible for the canvas UI component AND its board items
@@ -77,7 +84,7 @@ class BoardCanvas(tk.Canvas):
         self.move_y = 0
         self.last_update_time = 0
         self.update_threshold = 0.016
-        
+
         self.bind_board()
 
     def initial_setup(self):
@@ -119,11 +126,11 @@ class BoardCanvas(tk.Canvas):
             *self.board_items,
             *[child for item in self.board_items for child in item.winfo_children()],
         ]
-        utils.set_defocus_on(globals.root, self, exceptions, self.selector.clear)
+        set_defocus_on(globals.root, self, exceptions, self.selector.clear)
 
         for item in self.board_items:
             item.set_bindings()
-            
+
     def unbind_items(self):
         for item in self.board_items:
             item.remove_bindings()
